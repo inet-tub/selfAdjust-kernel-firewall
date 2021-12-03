@@ -63,6 +63,6 @@ int sal_add_last(struct sal_list_entry_point *head, struct sal_list_head *new_no
     return 0;
 }
 
-#define FOR_NODE_IN_SAL(x,list_head) for(struct sal_list_head *x = (list_head).list.next; x != &(list_head).list; x = x->next)
+#define FOR_NODE_IN_SAL(x,list_head) for(struct sal_list_head *(x) = (list_head).list.next; (x) != &(list_head).list; (x) = (x)->next)
 
 #endif //SELF_ADJUSTING_LIST_H
