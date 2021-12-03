@@ -21,7 +21,7 @@ int main() {
     sal_add_last(&new_list, &y.list);
     sal_add_last(&new_list, &z.list);
     sal_add_last(&new_list, &u.list);
-    FOR_NODE_IN_SAL(new_list){
+    FOR_NODE_IN_SAL(node, new_list){
         struct my_struct *a = container_of(node, struct my_struct, list);
         printf("idx: %d\n", a->idx);
     }

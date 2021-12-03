@@ -12,9 +12,9 @@
 
 /*
  * struct sal_list_head - self adjusting list node element with dependencies
- * @list: the list that links the elements (other list_nodes)
+ * @next: points to the next element in the list
+ * @prev: points to the previous element in the list
  * @dependencies: list to store the dependencies of a list entry
- * @data: the data of the entry
  */
 struct sal_list_head {
     struct sal_list_head *next;
@@ -49,7 +49,11 @@ struct sal_dependency_node {
 #define SAL_LIST_HEAD(name, func) \
     struct sal_list_entry_point name = SAL_LIST_HEAD_INIT(name, func)
 
-
+/*
+ * sal_add_last - inserts a new element at the end of the list
+ * @head this is the entry point to the list
+ * @new_node is the new item to insert
+ * */
 int sal_add_last(struct sal_list_entry_point *head, struct sal_list_head *new_node) {
     struct sal_list_head *last = head->list.prev;
     last->next = new_node;
@@ -59,16 +63,6 @@ int sal_add_last(struct sal_list_entry_point *head, struct sal_list_head *new_no
     return 0;
 }
 
-//DEBUG SECTION
-//void iterate_and_print_idx(struct sal_list_entry_point *head) {
-//    struct list_head *next = head->list.next;
-//    while (next != &head->list){
-//        struct sal_list_head *item = container_of(next, struct sal_list_head, list);
-//        printf("%u\n", item->index);
-//        next = next->next;
-//    }
-//}
-
-#define FOR_NODE_IN_SAL(list_head) for(struct sal_list_head *node = (list_head).list.next; node != &(list_head).list; node = node->next)
+#define FOR_NODE_IN_SAL(x,list_head) for(struct sal_list_head *x = (list_head).list.next; x != &(list_head).list; x = x->next)
 
 #endif //SELF_ADJUSTING_LIST_H
