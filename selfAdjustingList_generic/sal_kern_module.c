@@ -3,6 +3,7 @@
 // Kernel Module to test the self_adjusting_list data structure in kernel space
 #include <linux/init.h>
 #include <linux/module.h>
+#include "self_adjusting_list.h"
 
 MODULE_LICENSE("GPL");
 
