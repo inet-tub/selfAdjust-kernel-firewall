@@ -43,7 +43,7 @@ struct sal_dependency_node {
 };
 
 // initializes the entry point of the list
-#define SAL_ENTRY_POINT_INIT(name, func) {&(name).list, &(name).list,&(name).list.dependencies, &(name).list.dependencies, func}
+#define SAL_ENTRY_POINT_INIT(name, func) {{&(name).list, &(name).list, { &(name).list.dependencies , &(name).list.dependencies }}, (func)}
 
 #define SAL_ENTRY_POINT(name, func) \
     struct sal_list_entry_point name = SAL_ENTRY_POINT_INIT(name, func)
@@ -53,10 +53,8 @@ struct sal_dependency_node {
 #define SAL_HEAD_INIT(name, sal_head) \
     (name).sal_head.next = NULL; \
     (name).sal_head.prev = NULL;      \
-    (name).sal_head.dependencies = LIST_HEAD_INIT((name).sal_head.dependencies)
-
-//    (name).sal_head.dependencies.next = &(name).sal_head.dependencies; \
-//    (name).sal_head.dependencies.prev = &(name).sal_head.dependencies
+    (name).sal_head.dependencies.next = &(name).sal_head.dependencies; \
+    (name).sal_head.dependencies.prev = &(name).sal_head.dependencies
 
 
 // for loop macro to iterate over the list
