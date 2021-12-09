@@ -9,7 +9,7 @@
 #include <linux/kernel.h>
 #include <linux/list.h>
 
-/*
+/**
  * struct sal_list_head - self adjusting list node element with dependencies
  * @next: points to the next element in the list
  * @prev: points to the previous element in the list
@@ -21,7 +21,7 @@ struct sal_list_head {
     struct list_head dependencies;
 };
 
-/*
+/**
  * struct sal_list_entry_point - entry point to the list
  * @list: points to the first and the last element of the list, small overhead because dependencies is never used for the entry_point
  * @is_dependent: Function to check whether 2 list entries are dependent on each other
@@ -32,9 +32,9 @@ struct sal_list_entry_point {
     bool (*is_dependent)(struct sal_list_head *, struct sal_list_head *);
 };
 
-/*
+/**
  * struct sal_dependency_node - structure to store dependencies
- * @id: identifier of another sa_list_node, which has a dependency with this sa_list_node
+ * @dep: pointer to a another node, this node has a dependency to
  * @list: list of dependencies
  */
 struct sal_dependency_node {
@@ -53,15 +53,17 @@ struct sal_dependency_node {
 #define SAL_HEAD_INIT(name, sal_head) \
     (name).sal_head.next = NULL; \
     (name).sal_head.prev = NULL;      \
-    (name).sal_head.dependencies.next = &(name).sal_head.dependencies; \
-    (name).sal_head.dependencies.prev = &(name).sal_head.dependencies
+    (name).sal_head.dependencies = LIST_HEAD_INIT((name).sal_head.dependencies)
+
+//    (name).sal_head.dependencies.next = &(name).sal_head.dependencies; \
+//    (name).sal_head.dependencies.prev = &(name).sal_head.dependencies
 
 
 // for loop macro to iterate over the list
 #define FOR_NODE_IN_SAL(x,list_head) for(x = (list_head)->list.next; (x) != &(list_head)->list; (x) = (x)->next)
 
 
-/*
+/**
  * sal_check_dependencies - searches the whole list, whether there is a dependency between an existing node to the new_node according to the is_dependent function
  *                          if no is_dependent function is provided, the list should behave like a normal linked list
  * @head: entry point to the list
@@ -93,20 +95,62 @@ int sal_check_dependencies(struct sal_list_entry_point *head, struct sal_list_he
     return 0;
 }
 
-/*
+/**
  * sal_add_last - inserts a new element at the end of the list
  * @head: this is the entry point to the list
  * @new_node: is the new item to insert
  * */
 int sal_add_last(struct sal_list_entry_point *head, struct sal_list_head *new_node) {
-    struct sal_list_head *last = head->list.prev;
+    struct sal_list_head *last;
+    //Check first for dependencies so that the node does not check if it has a dependency to itself
+    sal_check_dependencies(head, new_node);
+
+    last = head->list.prev;
     last->next = new_node;
     new_node->next = &head->list;
     new_node->prev = last;
     head->list.prev = new_node;
-    sal_check_dependencies(head, new_node);
     return 0;
 }
 
+/**
+ *__sal_cleanup_dependencies - removes all the dependency entries from a sal_entry
+ * @node: a sal_entry with a list of dependencies
+ */
+void __sal_cleanup_dependencies(struct sal_list_head *node) {
+    struct list_head *dep_list_head;
+    struct sal_dependency_node *cur_dep_entry;
+    struct list_head *cur;
+    if(node == NULL) {
+        printk(KERN_WARNING "%s: node is NULL! Try to deduct how you end up in this mess!\n", __FUNCTION__ );
+        return;
+    }
+    dep_list_head = &node->dependencies;
+    cur_dep_entry = NULL;
+    while (!list_empty(dep_list_head)){
+        cur = dep_list_head->next;
+        list_del(cur);
+        printk(KERN_INFO "%s: LIST_POISON1: %p LIST_POISON2: %p \n", __FUNCTION__ , cur->next, cur->prev);
+        cur_dep_entry = list_entry(cur, struct sal_dependency_node, list);
+        cur_dep_entry->dep = NULL;
+        if(cur_dep_entry != NULL) //#TODO just here for safety
+            kzfree(cur_dep_entry);
+        else
+            printk(KERN_ALERT "%s: The cur_dep_entry is NULL. WHY???\n", __FUNCTION__ );
+        cur_dep_entry = NULL;
+    }
+}
+
+/**
+ * sal_cleanup - iterates over all sal_entries and frees the allocated memory
+ * @head: entry point of the list
+ */
+ void sal_cleanup(struct sal_list_entry_point *head) {
+     struct sal_list_head *cur;
+
+    FOR_NODE_IN_SAL(cur, head){
+        __sal_cleanup_dependencies(cur);
+    }
+ }
 
 #endif //SELF_ADJUSTING_LIST_H
