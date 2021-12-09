@@ -21,7 +21,8 @@ struct sal_list_head {
     struct list_head dependencies;
 };
 
-/* struct sal_list_entry_point - entry point to the list
+/*
+ * struct sal_list_entry_point - entry point to the list
  * @list: points to the first and the last element of the list, small overhead because dependencies is never used for the entry_point
  * @is_dependent: Function to check whether 2 list entries are dependent on each other
  *
@@ -36,7 +37,6 @@ struct sal_list_entry_point {
  * @id: identifier of another sa_list_node, which has a dependency with this sa_list_node
  * @list: list of dependencies
  */
-
 struct sal_dependency_node {
     struct sal_list_head *dep;
     struct list_head list;
@@ -57,12 +57,46 @@ struct sal_dependency_node {
     (name).sal_head.dependencies.prev = &(name).sal_head.dependencies
 
 
-int sal_check_dependencies(struct sal_list_entry_point *head, struct sal_list_head *new_node);
+// for loop macro to iterate over the list
+#define FOR_NODE_IN_SAL(x,list_head) for(x = (list_head)->list.next; (x) != &(list_head)->list; (x) = (x)->next)
+
+
+/*
+ * sal_check_dependencies - searches the whole list, whether there is a dependency between an existing node to the new_node according to the is_dependent function
+ *                          if no is_dependent function is provided, the list should behave like a normal linked list
+ * @head: entry point to the list
+ * @new_node: the new node which is inserted
+ * */
+int sal_check_dependencies(struct sal_list_entry_point *head, struct sal_list_head *new_node){
+    struct sal_dependency_node *dep;
+    struct sal_list_head* node;
+
+    if(head->is_dependent == NULL){
+        return 0;
+    }
+    FOR_NODE_IN_SAL(node, head) {
+        //TODO is it needed, to check both direction? i suppose yes, since the dependencies is not a symmetric relation
+        if (head->is_dependent(node, new_node)) {
+            printk("%d\n", head->is_dependent(node, new_node));
+            // #TODO replace malloc and where is it freed?
+            dep = kzalloc(sizeof(struct sal_dependency_node), GFP_KERNEL);
+            dep->dep = new_node;
+            list_add_tail(&dep->list, &node->dependencies);
+        }else if(head->is_dependent(new_node, node)) {
+            printk(KERN_INFO "%d\n", head->is_dependent(new_node, node));
+            // #TODO replace malloc and where is it freed?
+            dep = kzalloc(sizeof (struct sal_dependency_node), GFP_KERNEL);
+            dep->dep = node;
+            list_add_tail(&dep->list, &new_node->dependencies);
+        }
+    }
+    return 0;
+}
 
 /*
  * sal_add_last - inserts a new element at the end of the list
- * @head this is the entry point to the list
- * @new_node is the new item to insert
+ * @head: this is the entry point to the list
+ * @new_node: is the new item to insert
  * */
 int sal_add_last(struct sal_list_entry_point *head, struct sal_list_head *new_node) {
     struct sal_list_head *last = head->list.prev;
@@ -74,35 +108,5 @@ int sal_add_last(struct sal_list_entry_point *head, struct sal_list_head *new_no
     return 0;
 }
 
-//x is a pointer, but list_head is not...#TODO change list_head also to a pointer?
-#define FOR_NODE_IN_SAL(x,list_head) for(x = (list_head).list.next; (x) != &(list_head).list; (x) = (x)->next)
-
-
-//searches the whole list, whether there is a dependency to the new_node
-int sal_check_dependencies(struct sal_list_entry_point *head, struct sal_list_head *new_node){
-    struct sal_dependency_node *dep;
-    struct sal_list_head* node;
-
-    if(head->is_dependent == NULL){
-        return 0;
-    }
-    FOR_NODE_IN_SAL(node, *head) {
-        //TODO is it needed, to check both direction? i suppose yes, since the dependencies is not a symmetric relation
-        if (head->is_dependent(node, new_node)) {
-            printk("%d\n", head->is_dependent(node, new_node));
-            // #TODO replace malloc and where is it freed?
-            dep = kzalloc(sizeof(struct sal_dependency_node), GFP_KERNEL|GFP_NOWAIT);
-            dep->dep = new_node;
-            list_add_tail(&dep->list, &node->dependencies);
-        }else if(head->is_dependent(new_node, node)) {
-            printk(KERN_INFO "%d\n", head->is_dependent(new_node, node));
-            // #TODO replace malloc and where is it freed?
-            dep = kzalloc(sizeof (struct sal_dependency_node), GFP_KERNEL|GFP_NOWAIT);
-            dep->dep = node;
-            list_add_tail(&dep->list, &new_node->dependencies);
-        }
-    }
-    return 0;
-}
 
 #endif //SELF_ADJUSTING_LIST_H
