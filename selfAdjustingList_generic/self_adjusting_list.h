@@ -128,11 +128,11 @@ void __sal_cleanup_dependencies(struct sal_list_head *node) {
     while (!list_empty(dep_list_head)){
         cur = dep_list_head->next;
         list_del(cur);
-        printk(KERN_INFO "%s: LIST_POISON1: %p LIST_POISON2: %p \n", __FUNCTION__ , cur->next, cur->prev);
+//        printk(KERN_INFO "%s: LIST_POISON1: %p LIST_POISON2: %p \n", __FUNCTION__ , cur->next, cur->prev);
         cur_dep_entry = list_entry(cur, struct sal_dependency_node, list);
         cur_dep_entry->dep = NULL;
         if(cur_dep_entry != NULL) //#TODO just here for safety
-            kzfree(cur_dep_entry);
+            kfree(cur_dep_entry);
         else
             printk(KERN_ALERT "%s: The cur_dep_entry is NULL. WHY???\n", __FUNCTION__ );
         cur_dep_entry = NULL;

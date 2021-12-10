@@ -28,12 +28,12 @@ bool depends(struct sal_list_head *a, struct sal_list_head*b){
         return 0;
 }
 
-static int __init sal_test_init(void) {
+static int sal_test_init(void) {
     struct my_struct a;
     struct my_struct b;
     struct my_struct c;
     struct my_struct d;
-    SAL_ENTRY_POINT(my_list, NULL);
+    SAL_ENTRY_POINT(my_list, &depends);
     printk(KERN_INFO "Starting SAL Test\n");
 
     a.idx = 1;
@@ -48,6 +48,10 @@ static int __init sal_test_init(void) {
     d.idx = 4;
     SAL_HEAD_INIT(d,list);
 
+    sal_add_last(&my_list, &a.list);
+    sal_add_last(&my_list, &b.list);
+    sal_add_last(&my_list, &c.list);
+    sal_add_last(&my_list, &d.list);
     printk(KERN_INFO "End of SAL Tests! Cleanup!\n");
     sal_cleanup(&my_list);
     printk(KERN_INFO "SAL cleanup done!\n");
