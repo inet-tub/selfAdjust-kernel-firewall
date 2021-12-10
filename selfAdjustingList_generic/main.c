@@ -4,7 +4,7 @@
 
 struct my_struct {
     int idx;
-    struct sal_list_head list;
+    struct sal_head list;
 };
 
 //always need container_of macro to get access to the struct.
@@ -13,7 +13,7 @@ struct my_struct {
 //But also if I could manage to pass the custom struct type using macros down to the sal_check_dependencies function
 // (which calls this function), still, a cast from "void *" to "struct custom_struct *" is needed, so either way I cannot
 // get rid of the cast => so it seems to be still easier to do it with container_of
-bool depends(struct sal_list_head *a, struct sal_list_head*b){
+bool depends(struct sal_head *a, struct sal_head*b){
     struct my_struct *item_a = container_of(a, struct my_struct, list);
     struct my_struct *item_b = container_of(b, struct my_struct, list);
     if(item_a->idx < item_b->idx)

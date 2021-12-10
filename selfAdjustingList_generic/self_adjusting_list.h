@@ -10,26 +10,26 @@
 #include <linux/list.h>
 
 /**
- * struct sal_list_head - self adjusting list node element with dependencies
+ * struct sal_head - self adjusting list node element with dependencies
  * @next: points to the next element in the list
  * @prev: points to the previous element in the list
  * @dependencies: list to store the dependencies of a list entry
  */
-struct sal_list_head {
-    struct sal_list_head *next;
-    struct sal_list_head *prev;
+struct sal_head {
+    struct sal_head *next;
+    struct sal_head *prev;
     struct list_head dependencies;
 };
 
 /**
- * struct sal_list_entry_point - entry point to the list
+ * struct sal_entry_point - entry point to the list
  * @list: points to the first and the last element of the list, small overhead because dependencies is never used for the entry_point
  * @is_dependent: Function to check whether 2 list entries are dependent on each other
  *
  */
-struct sal_list_entry_point {
-    struct sal_list_head list;
-    bool (*is_dependent)(struct sal_list_head *, struct sal_list_head *);
+struct sal_entry_point {
+    struct sal_head list;
+    bool (*is_dependent)(struct sal_head *, struct sal_head *);
 };
 
 /**
@@ -38,7 +38,7 @@ struct sal_list_entry_point {
  * @list: list of dependencies
  */
 struct sal_dependency_node {
-    struct sal_list_head *dep;
+    struct sal_head *dep;
     struct list_head list;
 };
 
@@ -46,10 +46,10 @@ struct sal_dependency_node {
 #define SAL_ENTRY_POINT_INIT(name, func) {{&(name).list, &(name).list, { &(name).list.dependencies , &(name).list.dependencies }}, (func)}
 
 #define SAL_ENTRY_POINT(name, func) \
-    struct sal_list_entry_point name = SAL_ENTRY_POINT_INIT(name, func)
+    struct sal_entry_point name = SAL_ENTRY_POINT_INIT(name, func)
 
 
-//initializes the sal_list_head struct
+//initializes the sal_head struct
 #define SAL_HEAD_INIT(name, sal_head) \
     (name).sal_head.next = NULL; \
     (name).sal_head.prev = NULL;      \
@@ -67,9 +67,9 @@ struct sal_dependency_node {
  * @head: entry point to the list
  * @new_node: the new node which is inserted
  * */
-int sal_check_dependencies(struct sal_list_entry_point *head, struct sal_list_head *new_node){
+int sal_check_dependencies(struct sal_entry_point *head, struct sal_head *new_node){
     struct sal_dependency_node *dep;
-    struct sal_list_head* node;
+    struct sal_head* node;
 
     if(head->is_dependent == NULL){
         return 0;
@@ -98,8 +98,8 @@ int sal_check_dependencies(struct sal_list_entry_point *head, struct sal_list_he
  * @head: this is the entry point to the list
  * @new_node: is the new item to insert
  * */
-int sal_add_last(struct sal_list_entry_point *head, struct sal_list_head *new_node) {
-    struct sal_list_head *last;
+int sal_add_last(struct sal_entry_point *head, struct sal_head *new_node) {
+    struct sal_head *last;
     //Check first for dependencies so that the node does not check if it has a dependency to itself
     sal_check_dependencies(head, new_node);
 
@@ -115,7 +115,7 @@ int sal_add_last(struct sal_list_entry_point *head, struct sal_list_head *new_no
  *__sal_cleanup_dependencies - removes all the dependency entries from a sal_entry
  * @node: a sal_entry with a list of dependencies
  */
-void __sal_cleanup_dependencies(struct sal_list_head *node) {
+void __sal_cleanup_dependencies(struct sal_head *node) {
     struct list_head *dep_list_head;
     struct sal_dependency_node *cur_dep_entry;
     struct list_head *cur;
@@ -143,8 +143,8 @@ void __sal_cleanup_dependencies(struct sal_list_head *node) {
  * sal_cleanup - iterates over all sal_entries and frees the allocated memory
  * @head: entry point of the list
  */
- void sal_cleanup(struct sal_list_entry_point *head) {
-     struct sal_list_head *cur;
+ void sal_cleanup(struct sal_entry_point *head) {
+     struct sal_head *cur;
 
     FOR_NODE_IN_SAL(cur, head){
         __sal_cleanup_dependencies(cur);
