@@ -60,6 +60,13 @@ struct sal_dependency_node {
 // for loop macro to iterate over the list
 #define FOR_NODE_IN_SAL(x,list_head) for(x = (list_head)->list.next; (x) != &(list_head)->list; (x) = (x)->next)
 
+/**
+ * sal_empty - tests whether a list is empty
+ * @head: the list to test
+ */
+int sal_empty(struct sal_entry_point *head){
+    return head->list.next == &head->list;
+}
 
 /**
  * sal_check_dependencies - searches the whole list, whether there is a dependency between an existing node to the new_node according to the is_dependent function
@@ -127,7 +134,7 @@ void __sal_cleanup_dependencies(struct sal_head *node) {
     cur_dep_entry = NULL;
     while (!list_empty(dep_list_head)){
         cur = dep_list_head->next;
-        list_del(cur);
+        list_del(cur); //sets the next and prev to LIST_POISON
 //        printk(KERN_INFO "%s: LIST_POISON1: %p LIST_POISON2: %p \n", __FUNCTION__ , cur->next, cur->prev);
         cur_dep_entry = list_entry(cur, struct sal_dependency_node, list);
         cur_dep_entry->dep = NULL;
