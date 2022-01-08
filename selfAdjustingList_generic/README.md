@@ -1,3 +1,5 @@
+# Prerequisites
+- kernel headers need to be installed
 # Run
 1. execute `make`
 2. this creates a sal_kernel_module.ko
