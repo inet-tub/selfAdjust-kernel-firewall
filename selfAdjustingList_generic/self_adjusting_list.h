@@ -88,13 +88,11 @@ int sal_check_dependencies(struct sal_entry_point *head, struct sal_head *new_no
         //TODO is it needed, to check both direction? i suppose yes, since the dependencies is not a symmetric relation
         if (head->is_dependent(node, new_node)) {
             printk("%d\n", head->is_dependent(node, new_node));
-            // #TODO replace malloc and where is it freed?
             dep = kzalloc(sizeof(struct sal_dependency_node), GFP_KERNEL);
             dep->dep = new_node;
             list_add_tail(&dep->list, &node->dependencies);
         }else if(head->is_dependent(new_node, node)) {
             printk(KERN_INFO "%d\n", head->is_dependent(new_node, node));
-            // #TODO replace malloc and where is it freed?
             dep = kzalloc(sizeof (struct sal_dependency_node), GFP_KERNEL);
             dep->dep = node;
             list_add_tail(&dep->list, &new_node->dependencies);
