@@ -23,7 +23,8 @@ struct sal_head {
 
 /**
  * struct sal_entry_point - entry point to the list
- * @list: points to the first and the last element of the list, small overhead because dependencies is never used for the entry_point
+ * @list: points to the first and the last element of the list, small overhead because dependencies is never
+ * used for the entry_point
  * @is_dependent: Function to check whether 2 list entries are dependent on each other
  *
  */
@@ -43,7 +44,8 @@ struct sal_dependency_node {
 };
 
 // initializes the entry point of the list
-#define SAL_ENTRY_POINT_INIT(name, func) {{&(name).list, &(name).list, { &(name).list.dependencies , &(name).list.dependencies }}, (func)}
+#define SAL_ENTRY_POINT_INIT(name, func) \
+    {{&(name).list, &(name).list, { &(name).list.dependencies , &(name).list.dependencies }}, (func)}
 
 #define SAL_ENTRY_POINT(name, func) \
     struct sal_entry_point name = SAL_ENTRY_POINT_INIT(name, func)
@@ -69,8 +71,9 @@ int sal_empty(struct sal_entry_point *head){
 }
 
 /**
- * sal_check_dependencies - searches the whole list, whether there is a dependency between an existing node to the new_node according to the is_dependent function
- *                          if no is_dependent function is provided, the list should behave like a normal linked list
+ * sal_check_dependencies - searches the whole list, whether there is a dependency between an existing node to
+ * the new_node according to the is_dependent function
+ * if no is_dependent function is provided, the list should behave like a normal linked list
  * @head: entry point to the list
  * @new_node: the new node which is inserted
  * */
