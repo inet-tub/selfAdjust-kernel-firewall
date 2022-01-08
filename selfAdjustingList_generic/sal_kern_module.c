@@ -36,6 +36,11 @@ static int sal_test_init(void) {
     struct my_struct b;
     struct my_struct c;
     struct my_struct d;
+    struct sal_head *entry;
+    struct my_struct *tmp;
+    struct list_head *dep_entry;
+    struct sal_dependency_node *tmp_dep;
+
     SAL_ENTRY_POINT(my_list, &depends);
     printk(KERN_INFO "Starting SAL Test\n");
 
@@ -55,6 +60,16 @@ static int sal_test_init(void) {
     sal_add_last(&my_list, &b.list);
     sal_add_last(&my_list, &c.list);
     sal_add_last(&my_list, &d.list);
+
+    FOR_NODE_IN_SAL(entry, &my_list){
+        tmp = SAL_ENTRY(entry, struct my_struct, list);
+        printk(KERN_INFO "tmp->idx: %d\n", tmp->idx);
+        FOR_NODE_IN_DEPS(dep_entry, entry){
+            tmp_dep = SAL_DEP_ENTRY(dep_entry);
+            printk(KERN_INFO "\t%p : %d\n", tmp_dep->dep, SAL_ENTRY(tmp_dep->dep, struct my_struct, list)->idx);
+        }
+    }
+
     printk(KERN_INFO "End of SAL Tests! Cleanup!\n");
     sal_cleanup(&my_list);
     printk(KERN_INFO "SAL cleanup done!\n");
