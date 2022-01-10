@@ -77,15 +77,48 @@ struct sal_dependency_node {
     container_of(ptr,type,member)
 
 /**
+ * First/Last entry in the SAL
+ * @sal_head_ptr: pointer to struct sal_entry_point
+ * @type: the name of the struct where sal_head is embedded
+ * @member: the name of the sal_head in the struct
+ */
+#define SAL_FIRST_ENTRY(sal_head_ptr, type, member) \
+    container_of((sal_head_ptr)->list.next, type, member)
+
+#define SAL_LAST_ENTRY(sal_head_ptr, type, member) \
+    container_of((sal_head_ptr)->list.prev, type, member)
+
+#define SAL_FIRST(sal_head_ptr) \
+    sal_head_ptr->list.next
+
+#define SAL_LAST(sal_head_ptr) \
+    sal_head_ptr->list.prev
+
+#define sal_next_entry(pos, member) \
+    SAL_ENTRY((pos)->member.next, typeof(*pos), member)
+
+#define sal_entry_is_head(pos, entry_point, member) \
+    (&pos->member == &(entry_point)->list)
+
+#define sal_for_each_entry(pos, entry_point, member) \
+    for(pos=SAL_FIRST_ENTRY(entry_point, typeof(*pos), member);\
+        !sal_entry_is_head(pos, entry_point, member); \
+        pos = sal_next_entry(pos, member))
+
+/**
  * FOR_NODE_IN_DEPS - wrapper around the macro from list.h
  * @x: name of the struct list_head variable
  * @sal_head: pointer to the struct sal_head
  */
 #define FOR_NODE_IN_DEPS(x, sal_head) \
-    list_for_each(x,&(sal_head->dependencies))
+    list_for_each(x,&((sal_head)->dependencies))
 
 #define SAL_DEP_ENTRY(ptr) \
     container_of(ptr, struct sal_dependency_node, list)
+
+#define sal_for_each_dep_entry(pos, structure, member) \
+    list_for_each_entry(pos, &(structure->member).dependencies, list)
+
 /**
  * sal_empty - tests whether a list is empty
  * @head: the list to test
