@@ -12,3 +12,4 @@ install:
 	insmod $(kern_module)
 	dmesg | tail -n 50
 	rmmod $(kern_module)
+	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
