@@ -9,6 +9,9 @@
 #include <linux/kernel.h>
 #include <linux/list.h>
 
+#define FALSE 0
+#define TRUE 1
+
 /**
  * struct sal_head - self adjusting list node element with dependencies
  * @next: points to the next element in the list
@@ -97,13 +100,29 @@ struct sal_dependency_node {
 #define sal_next_entry(pos, member) \
     SAL_ENTRY((pos)->member.next, typeof(*pos), member)
 
+/**
+ * checks if a given struct entry is the head of the list
+ */
 #define sal_entry_is_head(pos, entry_point, member) \
     (&pos->member == &(entry_point)->list)
+
+/**
+ * checks if struct sal_head is start of the list
+ */
+#define sal_is_head(sal_head, entry_point) \
+    (sal_head == &(entry_point)->list)
 
 #define sal_for_each_entry(pos, entry_point, member) \
     for(pos=SAL_FIRST_ENTRY(entry_point, typeof(*pos), member);\
         !sal_entry_is_head(pos, entry_point, member); \
         pos = sal_next_entry(pos, member))
+
+#define sal_prev(sal_head) \
+    sal_head->prev
+
+#define sal_next(sal_head) \
+    sal_head->next
+
 
 /**
  * FOR_NODE_IN_DEPS - wrapper around the macro from list.h
@@ -125,6 +144,40 @@ struct sal_dependency_node {
  */
 int sal_empty(struct sal_entry_point *head){
     return head->list.next == &head->list;
+}
+
+void sal_swap(struct sal_head *a, struct sal_head *b){
+    struct sal_head *old_a_next;
+    struct sal_head *old_b_prev;
+    old_a_next = a->next;
+    old_b_prev = b->prev;
+
+    a->next = b->next;
+    b->prev = a->prev;
+    a->prev->next = b;
+    b->next->prev = a;
+
+    if(old_a_next != b ){
+        b->next = old_a_next;
+        a->prev = old_b_prev;
+        old_b_prev->next = a;
+        old_a_next->prev = b;
+    }else {
+        b->next = a;
+        a->prev = b;
+    }
+
+}
+
+
+int sal_dependent_prev(struct sal_head *pos){
+    struct sal_dependency_node *dep;
+    struct sal_head *prev = pos->prev;
+    list_for_each_entry(dep, &pos->dependencies, list){
+        if(dep->dep == prev)
+            return TRUE;
+    }
+    return FALSE;
 }
 
 /**

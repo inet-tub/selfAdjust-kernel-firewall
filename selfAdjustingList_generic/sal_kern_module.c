@@ -7,7 +7,6 @@
 
 MODULE_LICENSE("GPL");
 
-
 struct my_struct {
     int idx;
     struct sal_head list;
@@ -60,11 +59,24 @@ static int sal_test_init(void) {
     sal_add_last(&my_list, &d.list);
 
     sal_for_each_entry(entry, &my_list, list){
-        printk(KERN_INFO "tmp->idx: %d\n", entry->idx);
+        printk(KERN_INFO "sal_head %p entry->idx:%d\n",&entry->list, entry->idx);
         sal_for_each_dep_entry(tmp_dep, entry, list){
             printk(KERN_INFO "\t%p : %d\n", tmp_dep->dep, SAL_ENTRY(tmp_dep->dep, struct my_struct, list)->idx);
         }
     }
+    printk("b is dependent on prev node %d\n",sal_dependent_prev(&b.list));
+    printk("a %p next %p, a prev %p\n",&a.list, a.list.next, a.list.prev);
+    printk("b %p next %p, b prev %p\n",&b.list, b.list.next, b.list.prev);
+    printk("c %p next %p, c prev %p\n",&c.list, c.list.next, c.list.prev);
+    printk("d %p next %p, d prev %p\n",&d.list, d.list.next, d.list.prev);
+    sal_swap(&b.list, &c.list);
+    printk("b is dependent on prev node %d\n",sal_dependent_prev(&b.list));
+
+    printk("a %p next %p, a prev %p\n",&a.list, a.list.next, a.list.prev);
+    printk("b %p next %p, b prev %p\n",&b.list, b.list.next, b.list.prev);
+    printk("c %p next %p, c prev %p\n",&c.list, c.list.next, c.list.prev);
+    printk("d %p next %p, d prev %p\n",&d.list, d.list.next, d.list.prev);
+
 
     printk(KERN_INFO "End of SAL Tests! Cleanup!\n");
     sal_cleanup(&my_list);
