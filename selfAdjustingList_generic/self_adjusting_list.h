@@ -97,6 +97,12 @@ struct sal_dependency_node {
 #define SAL_LAST(sal_head_ptr) \
     sal_head_ptr->list.prev
 
+#define sal_is_first(sal_head_ptr, entry_point) \
+    (entry_point->list.next == sal_head_ptr)
+
+#define sal_is_last(sal_head_ptr, entry_point) \
+    (entry_point->list.prev == sal_head_ptr)
+
 #define sal_next_entry(pos, member) \
     SAL_ENTRY((pos)->member.next, typeof(*pos), member)
 
@@ -149,6 +155,14 @@ int sal_empty(struct sal_entry_point *head){
 void sal_swap(struct sal_head *a, struct sal_head *b){
     struct sal_head *old_a_next;
     struct sal_head *old_b_prev;
+    struct sal_head *tmp;
+
+    if(b->next == a) {
+        tmp = b;
+        b = a;
+        a = tmp;
+    }
+
     old_a_next = a->next;
     old_b_prev = b->prev;
 
@@ -157,7 +171,7 @@ void sal_swap(struct sal_head *a, struct sal_head *b){
     a->prev->next = b;
     b->next->prev = a;
 
-    if(old_a_next != b ){
+    if(old_a_next != b){
         b->next = old_a_next;
         a->prev = old_b_prev;
         old_b_prev->next = a;
@@ -169,6 +183,10 @@ void sal_swap(struct sal_head *a, struct sal_head *b){
 
 }
 
+void sal_swap_prev(struct sal_head *a){
+    sal_swap(a, a->prev);
+}
+
 
 int sal_dependent_prev(struct sal_head *pos){
     struct sal_dependency_node *dep;
@@ -178,6 +196,40 @@ int sal_dependent_prev(struct sal_head *pos){
             return TRUE;
     }
     return FALSE;
+}
+
+void sal_swap_front(struct sal_head *entry, struct sal_entry_point *head){
+    if(sal_is_first(entry, head)){
+        return;
+    }
+    entry->prev->next = entry->next;
+    entry->next->prev = entry->prev;
+    entry->next = head->list.next;
+    entry->prev = &head->list;
+    head->list.next->prev = entry;
+    head->list.next = entry;
+}
+
+void sal_access_entry(struct sal_head *entry, struct sal_entry_point *head) {
+    struct sal_head *pos;
+    pos = entry;
+    if(sal_is_first(pos, head)){
+        return;
+    }
+
+    //this could be replaced with a swap to front function
+    if(list_empty(&pos->dependencies)){
+        sal_swap_front(pos, head);
+    }
+
+    while(!sal_is_first(pos, head)){
+        if(sal_dependent_prev(pos))
+            sal_swap_prev(pos);
+        else
+            pos = pos->prev;
+    }
+
+
 }
 
 /**
