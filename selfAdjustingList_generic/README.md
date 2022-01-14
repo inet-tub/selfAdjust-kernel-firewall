@@ -7,7 +7,7 @@
 4. this inserts the module into kernel space
 5. output can be reviewed with `dmesg`
 6. to remove module again `sudo rmmod sal_kernel_module.ko`
-7. m̀ake install`runs all the commands (1-6)
+7. `make install` runs all the commands (1-6)
 
 ## Why a kernel test module
 
