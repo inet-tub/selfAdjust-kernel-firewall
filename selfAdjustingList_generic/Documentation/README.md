@@ -1,6 +1,6 @@
 # Generic Self-Adjusting List with Dependencies
 ## General overview of the data structure
-![Implementation](./graphics/sal_data_structure.png)
+![Implementation](./graphics/data_structures.png)
 
 ## Description of the internal structures
 ### Glossary
