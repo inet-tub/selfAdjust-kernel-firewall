@@ -38,7 +38,7 @@ static int sal_test_init(void) {
     struct my_struct *entry;
     struct sal_dependency_node *tmp_dep;
 
-    SAL_ENTRY_POINT(my_list, &depends);
+    SAL_ACCESS(my_list, &depends);
     printk(KERN_INFO "Starting SAL Test\n");
 
     a.idx = 1;
