@@ -3,6 +3,11 @@
 ![Implementation](./graphics/sal_data_structure.png)
 
 ## Description of the internal structures
+### Glossary
+- entry: always refers to a custom struct
+- node: always refers to the struct sal_head within an entry
+- access: always refers to the start and control structure of the list, which contains the dependency function and a pointer to the first and last element of the list
+
 ### struct sal_access
 This structure is the start of the list. It needs to be created first. It contains a function pointer to the function 
 which calculates if there is a dependency between two nodes.
@@ -13,7 +18,7 @@ so that it is easier to loop over the entire list.(overhead of 2 * sizeof( point
 
 ### struct sal_head
 As already mentioned: This structure holds 2 `struct sal_head` pointers for the next and the previous element in the 
-list as well as a `struct list_head`, which is a doubley linked list in the linux kernel, which is used to store 
+list as well as a `struct list_head`, which is a double linked list in the linux kernel, which is used to store 
 `struct sal_dependency_node`s.
 
 ### struct sal_dependency_node
