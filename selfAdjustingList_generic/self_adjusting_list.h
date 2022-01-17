@@ -111,7 +111,7 @@ struct sal_dependency_node {
     SAL_ENTRY((pos)->member.next, typeof(*pos), member)
 
 /**
- * checks if a given struct entry is the head of the list
+ * sal_entry_is_head - checks if a given struct entry is the head of the list
  * @pos: pointer to the entry
  * @access: pointer to struct sal_access
  * @member: name of the struct sal_head in the entry
@@ -120,7 +120,7 @@ struct sal_dependency_node {
     (&pos->member == &(access)->list)
 
 /**
- * checks if struct sal_head is start of the list
+ * sal_is_head - checks if struct sal_head is start of the list
  * @node: pointer to struct sal_head
  * @access: pointer to struct sal_access
  */
@@ -128,7 +128,7 @@ struct sal_dependency_node {
     (node == &(access)->list)
 
 /**
- * iterate over every entry in the list
+ * sal_for_each_entry - iterate over every entry in the list
  * @pos: iteration variable - type of custom struct
  * @access: pointer to struct sal_access
  * @member: name of struct sal_head in the custom struct
@@ -183,7 +183,7 @@ static inline int sal_empty(struct sal_access *head){
 
 
 /**
- * swaps two nodes
+ * sal_swap - swaps two nodes
  * @a: node that changes place with b
  * @b: node that changes place with a
  */
@@ -221,7 +221,7 @@ static inline void sal_swap(struct sal_head *a, struct sal_head *b){
 
 
 /**
- * swaps a node with its previous node
+ * sal_swap_prev - swaps a node with its previous node
  * @a: a is swapped with a->prev
  */
 static inline void sal_swap_prev(struct sal_head *a){
@@ -230,7 +230,7 @@ static inline void sal_swap_prev(struct sal_head *a){
 
 
 /**
- * checks if a node has a dependency on its previous node
+ * sal_dependent_prev - checks if a node has a dependency on its previous node
  * @pos: node
  * @return if pos->prev is a dependency of pos return TRUE
  */
@@ -246,7 +246,8 @@ static inline int sal_dependent_prev(struct sal_head *pos){
 
 
 /**
- * move a node to the front of the list - node is removed from its current position and inserted at front
+ * sal_move_front - move a node to the front of the list - node is removed from its current
+ * position and inserted at front
  * @node: node that is moved to front
  * @access: list
  */
@@ -264,7 +265,7 @@ static inline void sal_move_front(struct sal_head *node, struct sal_access *acce
 
 
 /**
- * function that is called when an entry is accessed - rearrange the order of elements
+ * sal_access_entry - function that is called when an entry is accessed; rearrange the order of elements
  * @node: node that is accessed
  * @access: list
  */
@@ -339,7 +340,7 @@ static inline int sal_add_last(struct sal_access *access, struct sal_head *new_n
 
 
 /**
- *__sal_cleanup_dependencies - removes all the dependency entries from a sal_entry
+ * __sal_cleanup_dependencies - removes all the dependency entries from a sal_entry
  * @node: a sal_entry with a list of dependencies
  */
 static inline void __sal_cleanup_dependencies(struct sal_head *node) {
