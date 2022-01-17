@@ -177,7 +177,7 @@ struct sal_dependency_node {
  * sal_empty - tests whether a list is empty
  * @head: the list to test
  */
-int sal_empty(struct sal_access *head){
+static inline int sal_empty(struct sal_access *head){
     return head->list.next == &head->list;
 }
 
@@ -187,7 +187,7 @@ int sal_empty(struct sal_access *head){
  * @a: node that changes place with b
  * @b: node that changes place with a
  */
-void sal_swap(struct sal_head *a, struct sal_head *b){
+static inline void sal_swap(struct sal_head *a, struct sal_head *b){
     struct sal_head *old_a_next;
     struct sal_head *old_b_prev;
     struct sal_head *tmp;
@@ -224,7 +224,7 @@ void sal_swap(struct sal_head *a, struct sal_head *b){
  * swaps a node with its previous node
  * @a: a is swapped with a->prev
  */
-void sal_swap_prev(struct sal_head *a){
+static inline void sal_swap_prev(struct sal_head *a){
     sal_swap(a, a->prev);
 }
 
@@ -234,7 +234,7 @@ void sal_swap_prev(struct sal_head *a){
  * @pos: node
  * @return if pos->prev is a dependency of pos return TRUE
  */
-int sal_dependent_prev(struct sal_head *pos){
+static inline int sal_dependent_prev(struct sal_head *pos){
     struct sal_dependency_node *dep;
     struct sal_head *prev = pos->prev;
     list_for_each_entry(dep, &pos->dependencies, list){
@@ -250,7 +250,7 @@ int sal_dependent_prev(struct sal_head *pos){
  * @node: node that is moved to front
  * @access: list
  */
-void sal_move_front(struct sal_head *node, struct sal_access *access){
+static inline void sal_move_front(struct sal_head *node, struct sal_access *access){
     if(sal_is_first(node, access)){
         return;
     }
@@ -268,7 +268,7 @@ void sal_move_front(struct sal_head *node, struct sal_access *access){
  * @node: node that is accessed
  * @access: list
  */
-void sal_access_entry(struct sal_head *node, struct sal_access *access) {
+static inline void sal_access_entry(struct sal_head *node, struct sal_access *access) {
     struct sal_head *pos;
     pos = node;
     if(sal_is_first(pos, access)){
@@ -295,7 +295,7 @@ void sal_access_entry(struct sal_head *node, struct sal_access *access) {
  * @access: list
  * @new_node: the new node which is inserted
  * */
-int sal_check_dependencies(struct sal_access *access, struct sal_head *new_node){
+static inline int sal_check_dependencies(struct sal_access *access, struct sal_head *new_node){
     struct sal_dependency_node *dep;
     struct sal_head* node;
 
@@ -324,7 +324,7 @@ int sal_check_dependencies(struct sal_access *access, struct sal_head *new_node)
  * @head: this is the entry point to the list
  * @new_node: is the new item to insert
  * */
-int sal_add_last(struct sal_access *access, struct sal_head *new_node) {
+static inline int sal_add_last(struct sal_access *access, struct sal_head *new_node) {
     struct sal_head *last;
     //Check first for dependencies so that the node does not check if it has a dependency to itself
     sal_check_dependencies(access, new_node);
@@ -342,7 +342,7 @@ int sal_add_last(struct sal_access *access, struct sal_head *new_node) {
  *__sal_cleanup_dependencies - removes all the dependency entries from a sal_entry
  * @node: a sal_entry with a list of dependencies
  */
-void __sal_cleanup_dependencies(struct sal_head *node) {
+static inline void __sal_cleanup_dependencies(struct sal_head *node) {
     struct list_head *dep_list_head;
     struct sal_dependency_node *cur_dep_entry;
     struct list_head *cur;
@@ -370,7 +370,7 @@ void __sal_cleanup_dependencies(struct sal_head *node) {
  * sal_cleanup - iterates over all sal_entries and frees the allocated memory
  * @access: access point of the list
  */
- void sal_cleanup(struct sal_access *access) {
+static inline void sal_cleanup(struct sal_access *access) {
      struct sal_head *cur;
 
     FOR_NODE_IN_SAL(cur, access){
