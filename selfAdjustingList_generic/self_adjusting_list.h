@@ -56,10 +56,10 @@ struct sal_dependency_node {
 
 //initializes the sal_head struct
 #define SAL_HEAD_INIT(name, sal_head) \
-    (name).sal_head.next = NULL; \
-    (name).sal_head.prev = NULL;      \
-    (name).sal_head.dependencies.next = &(name).sal_head.dependencies; \
-    (name).sal_head.dependencies.prev = &(name).sal_head.dependencies
+    (name)->sal_head.next = NULL; \
+    (name)->sal_head.prev = NULL;      \
+    (name)->sal_head.dependencies.next = &(name)->sal_head.dependencies; \
+    (name)->sal_head.dependencies.prev = &(name)->sal_head.dependencies
 
 
 /**
@@ -278,10 +278,11 @@ static inline void sal_access_entry(struct sal_head *node, struct sal_access *ac
 
     if(list_empty(&pos->dependencies)){
         sal_move_front(pos, access);
+        return;
     }
 
     while(!sal_is_first(pos, access)){
-        if(sal_dependent_prev(pos))
+        if(!sal_dependent_prev(pos))
             sal_swap_prev(pos);
         else
             pos = pos->prev;

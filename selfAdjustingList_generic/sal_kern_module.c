@@ -42,16 +42,16 @@ static int sal_test_init(void) {
     printk(KERN_INFO "Starting SAL Test\n");
 
     a.idx = 1;
-    SAL_HEAD_INIT(a, list);
+    SAL_HEAD_INIT(&a, list);
 
     b.idx = 2;
-    SAL_HEAD_INIT(b, list);
+    SAL_HEAD_INIT(&b, list);
 
     c.idx = 3;
-    SAL_HEAD_INIT(c, list);
+    SAL_HEAD_INIT(&c, list);
 
     d.idx = 4;
-    SAL_HEAD_INIT(d,list);
+    SAL_HEAD_INIT(&d,list);
 
     sal_add_last(&my_list, &a.list);
     sal_add_last(&my_list, &b.list);
@@ -69,12 +69,28 @@ static int sal_test_init(void) {
     printk("b %p next %p, b prev %p\n",&b.list, b.list.next, b.list.prev);
     printk("c %p next %p, c prev %p\n",&c.list, c.list.next, c.list.prev);
     printk("d %p next %p, d prev %p\n",&d.list, d.list.next, d.list.prev);
-    sal_swap(&c.list, &a.list);
+    sal_for_each_entry(entry, &my_list, list){
+        printk(KERN_INFO "sal_head %p entry->idx:%d\n",&entry->list, entry->idx);
+    }
+    printk("------");
     sal_access_entry(&d.list, &my_list);
     sal_for_each_entry(entry, &my_list, list){
         printk(KERN_INFO "sal_head %p entry->idx:%d\n",&entry->list, entry->idx);
     }
     //sal_swap_prev(&d.list);
+    sal_access_entry(&a.list, &my_list);
+    printk("------");
+
+    sal_for_each_entry(entry, &my_list, list){
+        printk(KERN_INFO "sal_head %p entry->idx:%d\n",&entry->list, entry->idx);
+    }
+
+    sal_access_entry(&c.list, &my_list);
+    printk("------");
+
+    sal_for_each_entry(entry, &my_list, list){
+        printk(KERN_INFO "sal_head %p entry->idx:%d\n",&entry->list, entry->idx);
+    }
 
 
 
