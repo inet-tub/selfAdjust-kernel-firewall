@@ -1,6 +1,6 @@
-obj-m += sal_kern_module.o
+obj-m += sal_kern_mod_storage.o
 obj-m += sal_kern_mod_memless.o
-kern_module = sal_kern_module.ko
+kern_module = sal_kern_mod_storage.ko
 
 all:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
