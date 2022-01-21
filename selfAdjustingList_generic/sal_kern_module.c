@@ -8,7 +8,9 @@
 MODULE_LICENSE("GPL");
 
 struct my_struct {
-    int idx;
+    int priority;
+    int src_port;
+    int dst_port;
     struct sal_head list;
 };
 
@@ -24,10 +26,29 @@ struct my_struct {
 bool depends(struct sal_head *a, struct sal_head*b){
     struct my_struct *item_a = container_of(a, struct my_struct, list);
     struct my_struct *item_b = container_of(b, struct my_struct, list);
-    if(item_a->idx < item_b->idx)
+    int overlap = 0;
+
+    if(item_a->src_port == item_b->src_port || item_a->dst_port == item_b->dst_port)
+        overlap = 1;
+
+    if(overlap && item_b->priority > item_a->priority)
         return 1;
     else
         return 0;
+
+}
+
+void print_list(struct sal_access *head) {
+    struct my_struct *entry;
+    struct sal_dependency_node *tmp_dep;
+    sal_for_each_entry(entry, head, list){
+        printk(KERN_INFO "prio: %d, src_port %d dst_port %d\n", entry->priority, entry->src_port, entry->dst_port);
+        sal_for_each_dep_entry(tmp_dep, entry, list)
+        {
+            printk(KERN_INFO"\t\tdep to %d\n", SAL_ENTRY(tmp_dep->dep, struct my_struct, list)->priority);
+        }
+    }
+    printk(KERN_INFO "----------------------------------------------------------------------------");
 }
 
 static int sal_test_init(void) {
@@ -35,63 +56,56 @@ static int sal_test_init(void) {
     struct my_struct b;
     struct my_struct c;
     struct my_struct d;
-    struct my_struct *entry;
-    struct sal_dependency_node *tmp_dep;
+    struct my_struct e;
 
     SAL_ACCESS(my_list, &depends);
     printk(KERN_INFO "Starting SAL Test\n");
+    a.priority = 10;
+    a.src_port = 5000;
+    a.dst_port = 443;
 
-    a.idx = 1;
+    b.priority = 9;
+    b.src_port = 4500;
+    b.dst_port = 80;
+
+    c.priority = 8;
+    c.src_port = 4300;
+    c.dst_port = 443;
+
+    d.priority = 7;
+    d.src_port = 4500;
+    d.dst_port = 80;
+
+    e.priority = 6;
+    e.src_port = 8080;
+    e.dst_port = 22;
+
     SAL_HEAD_INIT(&a, list);
-
-    b.idx = 2;
     SAL_HEAD_INIT(&b, list);
-
-    c.idx = 3;
     SAL_HEAD_INIT(&c, list);
-
-    d.idx = 4;
     SAL_HEAD_INIT(&d,list);
+    SAL_HEAD_INIT(&e,list);
 
     sal_add_last(&my_list, &a.list);
     sal_add_last(&my_list, &b.list);
     sal_add_last(&my_list, &c.list);
     sal_add_last(&my_list, &d.list);
+    sal_add_last(&my_list, &e.list);
 
-    sal_for_each_entry(entry, &my_list, list){
-        printk(KERN_INFO "sal_head %p entry->idx:%d\n",&entry->list, entry->idx);
-        sal_for_each_dep_entry(tmp_dep, entry, list){
-            printk(KERN_INFO "\t%p : %d\n", tmp_dep->dep, SAL_ENTRY(tmp_dep->dep, struct my_struct, list)->idx);
-        }
-    }
-    printk("b is dependent on prev node %d\n",sal_dependent_prev(&b.list));
-    printk("a %p next %p, a prev %p\n",&a.list, a.list.next, a.list.prev);
-    printk("b %p next %p, b prev %p\n",&b.list, b.list.next, b.list.prev);
-    printk("c %p next %p, c prev %p\n",&c.list, c.list.next, c.list.prev);
-    printk("d %p next %p, d prev %p\n",&d.list, d.list.next, d.list.prev);
-    sal_for_each_entry(entry, &my_list, list){
-        printk(KERN_INFO "sal_head %p entry->idx:%d\n",&entry->list, entry->idx);
-    }
-    printk("------");
-    sal_access_entry(&d.list, &my_list);
-    sal_for_each_entry(entry, &my_list, list){
-        printk(KERN_INFO "sal_head %p entry->idx:%d\n",&entry->list, entry->idx);
-    }
-    //sal_swap_prev(&d.list);
-    sal_access_entry(&a.list, &my_list);
-    printk("------");
+    print_list(&my_list);
 
-    sal_for_each_entry(entry, &my_list, list){
-        printk(KERN_INFO "sal_head %p entry->idx:%d\n",&entry->list, entry->idx);
-    }
+    sal_access_entry(&e.list, &my_list);
+    printk("Accessing e\n");
+    print_list(&my_list);
+
 
     sal_access_entry(&c.list, &my_list);
-    printk("------");
+    printk("Accessing c\n");
+    print_list(&my_list);
 
-    sal_for_each_entry(entry, &my_list, list){
-        printk(KERN_INFO "sal_head %p entry->idx:%d\n",&entry->list, entry->idx);
-    }
-
+    sal_access_entry(&d.list, &my_list);
+    printk("Accessing d\n");
+    print_list(&my_list);
 
 
     printk(KERN_INFO "End of SAL Tests! Cleanup!\n");
