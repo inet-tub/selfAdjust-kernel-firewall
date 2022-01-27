@@ -5,7 +5,8 @@ is added which re-orders the elements in the list after an entry is accessed. Th
 2 `list_head *` and the compare/dependency calculation function as a parameter. The element which is accessed is checked, 
 if it has a dependency to its predecessor. If no dependency is detected then the accessed element is swapped with its 
 predecessor. However, if a dependency is detected the predecessor is the "active" node and is checked for dependenies with
-its predecessors. This process repeats until the head of the list is reached.
+its predecessors. This process repeats until the head of the list is reached. This is done iteratively and not recursively,
+since the optimization of a tail recursion is not done with the default compile parameters.
 
 ## Second Algorithm: Storing the Dependency Graph in Memory
 ### General overview of the data structure
