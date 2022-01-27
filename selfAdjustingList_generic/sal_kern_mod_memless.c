@@ -76,15 +76,15 @@ static int sal_memless_init(void){
     print_list(&my_list);
 
     list_access(&e.list, &my_list, &depends);
-    printk("Accessing e\n");
+    printk("Accessing prio: %d\n", e.priority);
     print_list(&my_list);
 
     list_access(&c.list, &my_list, &depends);
-    printk("Accessing c\n");
+    printk("Accessing prio: %d\n", c.priority);
     print_list(&my_list);
 
     list_access(&d.list, &my_list, &depends);
-    printk("Accessing d\n");
+    printk("Accessing prio: %d\n", d.priority);
     print_list(&my_list);
 
     printk(KERN_INFO "End of SAL memless test\n");

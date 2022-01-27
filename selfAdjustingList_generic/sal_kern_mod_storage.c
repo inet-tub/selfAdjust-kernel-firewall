@@ -95,15 +95,16 @@ static int sal_test_init(void) {
     print_list(&my_list);
 
     sal_access_entry(&e.list, &my_list);
-    printk("Accessing e\n");
+    printk("Accessing prio: %d\n", e.priority);
     print_list(&my_list);
 
 
     sal_access_entry(&c.list, &my_list);
-    printk("Accessing c\n");
+    printk("Accessing prio: %d\n", c.priority);
     print_list(&my_list);
 
     sal_access_entry(&d.list, &my_list);
+    printk("Accessing prio: %d\n", d.priority);
     printk("Accessing d\n");
     print_list(&my_list);
 
