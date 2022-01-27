@@ -59,7 +59,7 @@ static int sal_test_init(void) {
     struct my_struct e;
 
     SAL_ACCESS(my_list, &depends);
-    printk(KERN_INFO "Starting SAL Test\n");
+    printk(KERN_INFO "Starting SAL with storage test\n");
     a.priority = 10;
     a.src_port = 5000;
     a.dst_port = 443;

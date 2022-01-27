@@ -38,6 +38,7 @@ void print_list(struct list_head *head){
 }
 
 static int sal_memless_init(void){
+    printk(KERN_INFO "Starting SAL memless test\n");
     struct my_struct a;
     struct my_struct b;
     struct my_struct c;
@@ -85,6 +86,7 @@ static int sal_memless_init(void){
     printk("Accessing d\n");
     print_list(&my_list);
 
+    printk(KERN_INFO "End of SAL memless test\n");
 
     return 0;
 }
