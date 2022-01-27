@@ -38,13 +38,14 @@ void print_list(struct list_head *head){
 }
 
 static int sal_memless_init(void){
-    printk(KERN_INFO "Starting SAL memless test\n");
     struct my_struct a;
     struct my_struct b;
     struct my_struct c;
     struct my_struct d;
     struct my_struct e;
     LIST_HEAD(my_list);
+
+    printk(KERN_INFO "Starting SAL memless test\n");
 
     a.priority = 10;
     a.src_port = 5000;
