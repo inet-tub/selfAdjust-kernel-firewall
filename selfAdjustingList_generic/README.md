@@ -11,7 +11,7 @@
 
 ## Why a kernel test module
 
-- user space has its limitations to use certain kernel header `list.h` for example can not be easily included
-- it's closer to the final environment, since the data structure will live in Kernel space
+- User space has its limitations to use certain kernel header `list.h` for example can not be easily included
+- It's closer to the final environment, since the data structure will live in Kernel space
 - The tests will be executed when the module is inserted
 - Be aware of this code may crash your system 
