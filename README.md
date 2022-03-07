@@ -30,5 +30,5 @@
 
 - Evaluation:
 	- generating rules and pcap traffic using [classbench](https://github.com/sebymiano/classbench-generators)
-	- replay the traffic with tcpreplay => machines need to be connected on the same link
+	- replay the traffic with tcpreplay => machines need to be connected on the same link/over the same bridge
 	- which metrics should be used? how to compare approaches? how to measure?
