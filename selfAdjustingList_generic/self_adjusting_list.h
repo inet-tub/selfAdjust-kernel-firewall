@@ -310,12 +310,12 @@ static inline int sal_check_dependencies(struct sal_access *access, struct sal_h
         //TODO is it needed, to check both direction? i suppose yes, since the dependencies is not a symmetric relation
         if (access->is_dependent(node, new_node)) {
             dep = kzalloc(sizeof(struct sal_dependency_node), GFP_KERNEL);
-            dep->dep = new_node;
-            list_add_tail(&dep->list, &node->dependencies);
-        }else if(access->is_dependent(new_node, node)) {
-            dep = kzalloc(sizeof (struct sal_dependency_node), GFP_KERNEL);
             dep->dep = node;
             list_add_tail(&dep->list, &new_node->dependencies);
+        }else if(access->is_dependent(new_node, node)) {
+            dep = kzalloc(sizeof (struct sal_dependency_node), GFP_KERNEL);
+            dep->dep = new_node;
+            list_add_tail(&dep->list, &node->dependencies);
         }
     }
     return 0;

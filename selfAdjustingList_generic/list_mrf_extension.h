@@ -22,7 +22,7 @@ list_access(struct list_head *pos, struct list_head *head, int(*is_dependent)(st
     while (!list_is_first(cur, head)){
         prev = cur->prev;
         //prev is a dependency of cur => cur is not allowed to be in front of prev
-        if(is_dependent(cur, prev)) {
+        if(is_dependent(prev, cur)) {
             cur = prev;
         }else{
             list_swap(cur, prev);

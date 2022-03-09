@@ -13,16 +13,16 @@ struct my_struct {
 };
 
 //returns 1 if b is a dependency of a => a is not allowed to be in front of b
-int depends(struct list_head *a, struct list_head *b){
-    struct my_struct *first = list_entry(a, struct my_struct, list);
-    struct my_struct *second = list_entry(b, struct my_struct, list);
+int depends(struct list_head *prev, struct list_head *rule){
+    struct my_struct *first = list_entry(prev, struct my_struct, list);
+    struct my_struct *second = list_entry(rule, struct my_struct, list);
 
     int overlap = 0;
 
     if(first->src_port == second->src_port || first->dst_port == second->dst_port){
         overlap = 1;
     }
-    if(overlap && second->priority > first->priority)
+    if(overlap && first->priority > second->priority)
         return 1;
     else
         return 0;

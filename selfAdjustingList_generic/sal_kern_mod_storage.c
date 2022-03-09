@@ -23,15 +23,15 @@ struct my_struct {
 // (which calls this function), still, a cast from "void *" to "struct custom_struct *" is needed, so either
 // way I cannot
 // get rid of the cast => so it seems to be still easier to do it with container_of
-bool depends(struct sal_head *a, struct sal_head*b){
-    struct my_struct *item_a = container_of(a, struct my_struct, list);
-    struct my_struct *item_b = container_of(b, struct my_struct, list);
+bool depends(struct sal_head *prev, struct sal_head*rule){
+    struct my_struct *first= container_of(prev, struct my_struct, list);
+    struct my_struct *second = container_of(rule, struct my_struct, list);
     int overlap = 0;
 
-    if(item_a->src_port == item_b->src_port || item_a->dst_port == item_b->dst_port)
+    if(first->src_port == second->src_port || first->dst_port == second->dst_port)
         overlap = 1;
 
-    if(overlap && item_b->priority > item_a->priority)
+    if(overlap && first->priority > second->priority)
         return 1;
     else
         return 0;
