@@ -10,7 +10,7 @@
  *               reorders elements in the list after an element has been accessed
  * @pos: the element that is accessed
  * @head: the head of the list
- * @is_dependent: function which decides if two elements are dependent on each other
+ * @is_dependent: function which decides if two elements are dependent on each other (a is a dependecy of b)
  */
 static inline void
 list_access(struct list_head *pos, struct list_head *head, int(*is_dependent)(struct list_head *a, struct list_head *b))
