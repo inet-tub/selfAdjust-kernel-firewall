@@ -23,6 +23,13 @@
 #define LOWDIM 0
 #define HIGHDIM 1
 
+static void print_rule_info(struct nft_ra_info *data){
+    printk("saddr %x : %x \n", data->range[SADDR][LOWDIM], data->range[SADDR][HIGHDIM]);
+    printk("daddr %x : %x \n", data->range[DADDR][LOWDIM], data->range[DADDR][HIGHDIM]);
+    printk("sport %u : %u \n", data->range[SPORT][LOWDIM], data->range[SPORT][HIGHDIM]);
+    printk("dport %u : %u \n", data->range[DPORT][LOWDIM], data->range[DPORT][HIGHDIM]);
+    printk("prtocol %x : %x \n", data->range[PROTO][LOWDIM], data->range[PROTO][HIGHDIM]);
+}
 
 int rule_compare(struct list_head *prev, struct list_head *matched){
     struct nft_rule *pre_dep;
@@ -39,6 +46,8 @@ int rule_compare(struct list_head *prev, struct list_head *matched){
     // a low number in the priority field is a high priority
     if(pre_dep->cmp_data.priority < r->cmp_data.priority){
         printk("Rule %llu is a dependecy of Rule %llu\n", pre_dep->handle, r->handle);
+        //print_rule_info(&pre_dep->cmp_data);
+        //print_rule_info(&r->cmp_data);
        return 1;
     }
  
@@ -173,7 +182,6 @@ static void nft_ra_cmp(struct nft_ra_info *data, struct nft_expr *expr, u8 f, u8
 
 static inline u32 nft_ra_bitwise(struct nft_expr *expr){
     struct nft_bitwise_fast_expr *priv= nft_expr_priv(expr);
-    printk("Load mask\n");
     return priv->mask;
 }
 
@@ -192,13 +200,7 @@ static void nft_ra_meta_cmp(struct nft_ra_info *data, struct nft_meta *meta, str
     }
 }
 
-static void print_rule_info(struct nft_ra_info *data){
-    printk("saddr %x : %x \n", data->range[SADDR][LOWDIM], data->range[SADDR][HIGHDIM]);
-    printk("daddr %x : %x \n", data->range[DADDR][LOWDIM], data->range[DADDR][HIGHDIM]);
-    printk("sport %u : %u \n", data->range[SPORT][LOWDIM], data->range[SPORT][HIGHDIM]);
-    printk("dport %u : %u \n", data->range[DPORT][LOWDIM], data->range[DPORT][HIGHDIM]);
-    printk("prtocol %x : %x \n", data->range[PROTO][LOWDIM], data->range[PROTO][HIGHDIM]);
-}
+
 
 void nft_construct_rule_data(struct nft_ra_info *data, struct nft_rule *rule){
     struct nft_expr *expr, *last;
@@ -289,5 +291,5 @@ void nft_construct_rule_data(struct nft_ra_info *data, struct nft_rule *rule){
             break;
         }
     }
-    print_rule_info(data);
+    //print_rule_info(data);
 }

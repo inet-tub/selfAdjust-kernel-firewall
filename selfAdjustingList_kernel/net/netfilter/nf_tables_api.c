@@ -1003,7 +1003,6 @@ static int nf_tables_newtable(struct net *net, struct sock *nlsk,
 	struct nft_ctx ctx;
 	u32 flags = 0;
 	int err;
-	printk("In: %s\n", __FUNCTION__);
 	lockdep_assert_held(&net->nft.commit_mutex);
 	attr = nla[NFTA_TABLE_NAME];
 	table = nft_table_lookup(net, attr, family, genmask);
@@ -1666,7 +1665,6 @@ static void nf_tables_chain_free_chain_rules(struct nft_chain *chain)
 {
 	struct nft_rule **g0 = rcu_dereference_raw(chain->rules_gen_0);
 	struct nft_rule **g1 = rcu_dereference_raw(chain->rules_gen_1);
-	printk("In: %s\n", __FUNCTION__);
 	if (g0 != g1)
 		kvfree(g1);
 	kvfree(g0);
@@ -2007,7 +2005,6 @@ static int nf_tables_addchain(struct nft_ctx *ctx, u8 family, u8 genmask,
 	struct nft_rule **rules;
 	int err;
 
-	printk(KERN_INFO "in %s\n", __FUNCTION__);
 
 	if (table->use == UINT_MAX)
 		return -EOVERFLOW;
@@ -3185,11 +3182,8 @@ static int nf_tables_newrule(struct net *net, struct sock *nlsk,
 	unsigned int size, i, n, ulen = 0, usize = 0;
 	int err, rem;
 	u64 handle, pos_handle;
-//TEST SECTION
-	struct nft_payload *test_payload;
-	struct nft_meta *test_meta;
-//END TEST SECTION
-	printk(KERN_INFO "In: %s -- start test\n", __FUNCTION__);
+
+
 
 	lockdep_assert_held(&net->nft.commit_mutex);
 
@@ -3326,21 +3320,12 @@ static int nf_tables_newrule(struct net *net, struct sock *nlsk,
 			nft_validate_state_update(net, NFT_VALIDATE_NEED);
 
 		info[i].ops = NULL;
-		if(expr->ops->eval == &nft_payload_eval){
-			printk(KERN_INFO "In %s: payload-function added!\n", __FUNCTION__);
-			test_payload = nft_expr_priv(expr);
-			printk(KERN_INFO "Fields of payload: base: %d, offset: %d, len: %d, dreg: %d\n",test_payload->base, test_payload->offset, test_payload->len, test_payload->dreg);
-		}
-		else if(expr->ops->eval == &nft_meta_get_eval){
-			printk(KERN_INFO "In %s: meta-function added!\n", __FUNCTION__);
-			test_meta = nft_expr_priv(expr);
-			printk(KERN_INFO "Fields of meta: key: %d, dreg: %d, sreg: %d\n", test_meta->key, test_meta->dreg, test_meta->sreg);
-		
-		}
 		expr = nft_expr_next(expr);
 	}
 
+	//MyCode
 	nft_construct_rule_data(&rule->cmp_data, rule);
+
 	if (nlh->nlmsg_flags & NLM_F_REPLACE) {
 		trans = nft_trans_rule_add(&ctx, NFT_MSG_NEWRULE, rule);
 		if (trans == NULL) {
@@ -3386,7 +3371,6 @@ static int nf_tables_newrule(struct net *net, struct sock *nlsk,
 
 		nft_trans_flow_rule(trans) = flow;
 	}
-	printk(KERN_INFO "In: %s -- end\n", __FUNCTION__);
 
 	return 0;
 err2:
@@ -7560,6 +7544,16 @@ err_fill_gen_info:
 	return err;
 }
 
+//MyCode
+static int nf_tables_gettravnodes(struct net *net, struct sock *nlsk,
+				struct sk_buff *skb, const struct nlmsghdr *nlh,
+				const struct nlattr *const nla[],
+				struct netlink_ext_ack *extack)
+{
+	printk("Yes we got here!\n");
+	return 0;
+}
+
 static const struct nfnl_callback nf_tables_cb[NFT_MSG_MAX] = {
 	[NFT_MSG_NEWTABLE] = {
 		.call_batch	= nf_tables_newtable,
@@ -7673,6 +7667,10 @@ static const struct nfnl_callback nf_tables_cb[NFT_MSG_MAX] = {
 		.call_batch	= nf_tables_delflowtable,
 		.attr_count	= NFTA_FLOWTABLE_MAX,
 		.policy		= nft_flowtable_policy,
+	},
+	//MyCode
+	[NFT_MSG_GETTRAVNODES] = {
+		.call_rcu = nf_tables_gettravnodes,
 	},
 };
 
@@ -7807,7 +7805,6 @@ static void nf_tables_trans_destroy_work(struct work_struct *w)
 {
 	struct nft_trans *trans, *next;
 	LIST_HEAD(head);
-	printk("In: %s\n", __FUNCTION__);
 
 	spin_lock(&nf_tables_destroy_list_lock);
 	list_splice_init(&nf_tables_destroy_list, &head);
@@ -7835,7 +7832,6 @@ static int nf_tables_commit_chain_prepare(struct net *net, struct nft_chain *cha
 	struct nft_rule *rule;
 	unsigned int alloc = 0;
 	int i;
-	printk("In: %s\n", __FUNCTION__);
 	spin_lock(&chain->rules_lock);
 	/* already handled or inactive chain? */
 	if (chain->rules_next || !nft_is_active_next(net, chain)){
@@ -7873,7 +7869,6 @@ static int nf_tables_commit_chain_prepare(struct net *net, struct nft_chain *cha
 static void nf_tables_commit_chain_prepare_cancel(struct net *net)
 {
 	struct nft_trans *trans, *next;
-	printk("In: %s\n", __FUNCTION__);
 	list_for_each_entry_safe(trans, next, &net->nft.commit_list, list) {
 		struct nft_chain *chain = trans->ctx.chain;
 
@@ -7890,7 +7885,6 @@ static void nf_tables_commit_chain_prepare_cancel(struct net *net)
 static void __nf_tables_commit_chain_free_rules_old(struct rcu_head *h)
 {
 	struct nft_rules_old *o = container_of(h, struct nft_rules_old, h);
-	printk("In: %s\n", __FUNCTION__);
 	kvfree(o->start);
 }
 
@@ -7913,8 +7907,6 @@ static void nf_tables_commit_chain(struct net *net, struct nft_chain *chain)
 {
 	struct nft_rule **g0, **g1;
 	bool next_genbit;
-	printk("In: %s, \n", __FUNCTION__);
-	printk("IN NF_TABLES_COMMIT_CHAIN rcu_lock_held %d, rcu_sched_lock_held %d\n", rcu_read_lock_held(), rcu_read_lock_sched_held());
 	spin_lock(&chain->rules_lock);
 	next_genbit = nft_gencursor_next(net);
 
@@ -8006,7 +7998,6 @@ static void nf_tables_module_autoload_cleanup(struct net *net)
 static void nf_tables_commit_release(struct net *net)
 {
 	struct nft_trans *trans;
-	printk("In: %s\n", __FUNCTION__);
 
 	/* all side effects have to be made visible.
 	 * For example, if a chain named 'foo' has been deleted, a
@@ -8079,7 +8070,6 @@ static int nf_tables_commit(struct net *net, struct sk_buff *skb)
 	struct nft_chain *chain;
 	struct nft_table *table;
 	int err;
-	printk(KERN_INFO "in %s\n", __FUNCTION__);
 
 	if (list_empty(&net->nft.commit_list)) {
 		mutex_unlock(&net->nft.commit_mutex);
@@ -9149,7 +9139,6 @@ static struct pernet_operations nf_tables_net_ops = {
 static int __init nf_tables_module_init(void)
 {
 	int err;
-	printk("Init netfilter module\n");
 
 	spin_lock_init(&nf_tables_destroy_list_lock);
 	err = register_pernet_subsys(&nf_tables_net_ops);
@@ -9182,7 +9171,6 @@ static int __init nf_tables_module_init(void)
 		goto err6;
 
 	nft_chain_route_init();
-	printk("DONE WITH Init netfilter module\n");
 
 	return err;
 err6:

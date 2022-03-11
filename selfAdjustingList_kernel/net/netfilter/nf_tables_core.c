@@ -25,6 +25,8 @@
 #include <linux/list_mrf_extension.h>
 
 static unsigned int packet_counter = 0;
+static unsigned int work_scheduled = 0;
+static unsigned int tried_to_schedule = 0;
 
 static noinline void __nft_trace_packet(struct nft_traceinfo *info,
 					const struct nft_chain *chain,
@@ -196,7 +198,6 @@ static struct nft_rule **nf_tables_alloc_rules(const struct nft_chain *chain, un
 
 void swap_in_place(struct nft_chain *chain, struct nft_rule *matched_rule, bool genbit){
 	struct nft_rule *rule;
-	struct nft_rule *prev_rule;
 	struct nft_my_old_rules *old;
 	unsigned int num_of_rules;
 	int i;
@@ -248,31 +249,40 @@ void swap_in_place(struct nft_chain *chain, struct nft_rule *matched_rule, bool 
 	chain->rules_next = NULL;	
 	spin_unlock(&chain->rules_lock);
 	call_rcu(&old->h, free_my_rules);
-	printk("In: END %s\n",__FUNCTION__);
+	//printk("In: END %s\n",__FUNCTION__);
 }
 
-void schedule_swap(struct nft_chain *chain, struct nft_rule *rule){
+void schedule_swap(struct nft_chain *chain, struct nft_rule *rule, bool genbit){
 	struct nft_my_work_data *work;
+	
+	printk("In: schedule_swap %u\n", ++tried_to_schedule);
+	spin_lock(&chain->rules_lock);
+	if(list_is_first(&rule->list, &chain->rules)){
+		printk("Matched rule is first - not scheduled\n");
+		spin_unlock(&chain->rules_lock);
+		return;
+	}
+	spin_unlock(&chain->rules_lock);
 	work = kzalloc(sizeof(struct nft_my_work_data), GFP_KERNEL);
 	work->chain = chain;
 	work->rule = rule;
-	INIT_WORK(&(work->my_work), swap_front);
-	schedule_work(&(work->my_work));
+	work->genbit = genbit;
+
+	INIT_WORK(&(work->my_work), swap_front_scheduled);
+	if(schedule_work(&(work->my_work))){
+		work_scheduled++;
+		//printk("scheduled %u\n", work_scheduled);
+	}else
+		printk("dropped\n");
+	
+	
 }
 
-void swap_front(struct work_struct *work){
+void swap_front_scheduled(struct work_struct *work){
 	struct nft_my_work_data *my_data;
 	my_data = container_of(work, struct nft_my_work_data, my_work);
-	printk("In: START %s\n",__FUNCTION__);
-	spin_lock(&(my_data->chain->rules_lock));
-	printk("rcu_lock_held %d, rcu_sched_lock_held %d\n", rcu_read_lock_held(), rcu_read_lock_sched_held());
-	printk("chain name %s\n", my_data->chain->name);
-	printk("rule handle %lu\n", my_data->rule->handle);
-	raise_counter();
-	spin_unlock(&(my_data->chain->rules_lock));
-	synchronize_rcu();
+	swap_in_place(my_data->chain, my_data->rule, my_data->genbit);
 
-	printk("In: END %s\n",__FUNCTION__);
 	kfree(my_data);
 }
 
@@ -342,12 +352,12 @@ next_rule:
 	case NF_DROP:
 	case NF_QUEUE:
 	case NF_STOLEN:
-		printk(KERN_INFO "Rule taken handle %lu\n", rule->handle);
-	//	schedule_swap(chain, rule);
+		//printk(KERN_INFO "Rule taken handle %lu\n", rule->handle);
+		//schedule_swap(chain, rule, genbit);
 		swap_in_place(chain, rule, genbit);
 		nft_trace_packet(&info, chain, rule,
 				 NFT_TRACETYPE_RULE);
-		printk("Returning from nft_do_chain\n");
+		//printk("Returning from nft_do_chain %u\n", ++packet_counter);
 		return regs.verdict.code;
 	}
 
