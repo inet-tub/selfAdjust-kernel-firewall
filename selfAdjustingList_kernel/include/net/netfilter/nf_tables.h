@@ -879,7 +879,7 @@ struct nft_expr_ops {
 
 struct nft_ra_info{
 	u32 range[5][2];
-	u64 priority:42;
+	u64 priority;
 };
 /**
  *	struct nft_rule - nf_tables rule

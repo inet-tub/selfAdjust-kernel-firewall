@@ -29,6 +29,7 @@ static void print_rule_info(struct nft_ra_info *data){
     printk("sport %u : %u \n", data->range[SPORT][LOWDIM], data->range[SPORT][HIGHDIM]);
     printk("dport %u : %u \n", data->range[DPORT][LOWDIM], data->range[DPORT][HIGHDIM]);
     printk("prtocol %x : %x \n", data->range[PROTO][LOWDIM], data->range[PROTO][HIGHDIM]);
+    printk("priority: %llu\n", data->priority);
 }
 
 int rule_compare(struct list_head *prev, struct list_head *matched){
@@ -45,7 +46,7 @@ int rule_compare(struct list_head *prev, struct list_head *matched){
 
     // a low number in the priority field is a high priority
     if(pre_dep->cmp_data.priority < r->cmp_data.priority){
-        printk("Rule %llu is a dependecy of Rule %llu\n", pre_dep->handle, r->handle);
+        printk("Rule %llu is a dependecy of Rule %llu\n", (long long unsigned int)pre_dep->handle, (long long unsigned int)r->handle);
         //print_rule_info(&pre_dep->cmp_data);
         //print_rule_info(&r->cmp_data);
        return 1;
@@ -292,4 +293,5 @@ void nft_construct_rule_data(struct nft_ra_info *data, struct nft_rule *rule){
         }
     }
     //print_rule_info(data);
+
 }
