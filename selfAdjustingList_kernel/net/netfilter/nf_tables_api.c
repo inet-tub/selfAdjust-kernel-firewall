@@ -1055,6 +1055,7 @@ static int nf_tables_newtable(struct net *net, struct sock *nlsk,
 	table->family = family;
 	table->flags = flags;
 	table->handle = ++table_handle;
+	//printk("New table family %d\n", family);
 
 	nft_ctx_init(&ctx, net, skb, nlh, family, table, NULL, nla);
 	err = nft_trans_table_add(&ctx, NFT_MSG_NEWTABLE);
@@ -2061,7 +2062,9 @@ static int nf_tables_addchain(struct nft_ctx *ctx, u8 family, u8 genmask,
 	chain->handle = nf_tables_alloc_handle(table);
 	chain->table = table;
 
+	//MyCode
 	spin_lock_init(&chain->rules_lock);
+	atomic_set(&chain->traversed_rules, 0);
 
 	if (nla[NFTA_CHAIN_NAME]) {
 		chain->name = nla_strdup(nla[NFTA_CHAIN_NAME], GFP_KERNEL);
@@ -7545,13 +7548,70 @@ err_fill_gen_info:
 }
 
 //MyCode
+static int nf_tables_fill_travnode_info(struct sk_buff *skb, struct nft_chain *chain, u32 portid, u32 seq) {
+	struct nlmsghdr *nlh;
+	struct nfgenmsg *nfmsg;
+	int event = nfnl_msg_type(NFNL_SUBSYS_NFTABLES, NFT_MSG_GETTRAVNODES);
+	nlh = nlmsg_put(skb, portid, seq, event, sizeof(struct nfgenmsg), 0);
+	if(nlh == NULL)
+		goto nla_put_failure;
+
+	nfmsg = nlmsg_data(nlh);
+	nfmsg->nfgen_family = AF_UNSPEC;
+	nfmsg->version = 1;
+	nfmsg->res_id = 123;
+	if(nla_put_be32(skb, NLA_U32, htonl(atomic_read(&chain->traversed_rules)))){
+		goto nla_put_failure;
+	}
+	nlmsg_end(skb, nlh);
+	return 0;
+
+nla_put_failure:
+	nlmsg_trim(skb, nlh);
+	return -EMSGSIZE;
+}
+
+
 static int nf_tables_gettravnodes(struct net *net, struct sock *nlsk,
 				struct sk_buff *skb, const struct nlmsghdr *nlh,
 				const struct nlattr *const nla[],
 				struct netlink_ext_ack *extack)
 {
-	printk("Yes we got here!\n");
-	return 0;
+	struct nft_table *table;
+	struct nft_chain *chain;
+	struct sk_buff *skb2;
+	int err;
+	const struct nfgenmsg *nfmsg = nlmsg_data(nlh);
+	u8 genmask = nft_genmask_cur(net);
+	int family = nfmsg->nfgen_family;
+	printk("In %s\n", __FUNCTION__);
+	table = nft_table_lookup(net, nla[NFTA_CHAIN_TABLE], family, genmask);
+	if(IS_ERR(table)){
+		NL_SET_BAD_ATTR(extack, nla[NFTA_CHAIN_TABLE]);
+		return PTR_ERR(table);
+	}
+
+	chain = nft_chain_lookup(net, table, nla[NFTA_CHAIN_NAME], genmask);
+	if(IS_ERR(chain)) {
+		NL_SET_BAD_ATTR(extack, nla[NFTA_CHAIN_NAME]);
+		return PTR_ERR(chain);
+	}
+
+	skb2 = alloc_skb(NLMSG_GOODSIZE, GFP_ATOMIC);
+	if (skb2 == NULL)
+		return -ENOMEM;
+
+	err = nf_tables_fill_travnode_info(skb2, chain, NETLINK_CB(skb).portid, nlh->nlmsg_seq);
+	if(err < 0)
+		goto err_fill_travnode_info;
+
+	atomic_set(&chain->traversed_rules, 0);
+
+	return nfnetlink_unicast(skb2, net, NETLINK_CB(skb).portid);
+	
+err_fill_travnode_info:
+	kfree_skb(skb2);
+	return err;
 }
 
 static const struct nfnl_callback nf_tables_cb[NFT_MSG_MAX] = {
@@ -7671,6 +7731,8 @@ static const struct nfnl_callback nf_tables_cb[NFT_MSG_MAX] = {
 	//MyCode
 	[NFT_MSG_GETTRAVNODES] = {
 		.call_rcu = nf_tables_gettravnodes,
+		.attr_count	= NFTA_CHAIN_MAX,
+		.policy		= nft_chain_policy,
 	},
 };
 

@@ -322,6 +322,7 @@ next_rule:
 	rule = *rules;
 	regs.verdict.code = NFT_CONTINUE;
 	for (; *rules ; rules++) {
+		atomic_inc(&chain->traversed_rules);
 		rule = *rules;
 		nft_rule_for_each_expr(expr, last, rule) {
 			if (expr->ops == &nft_cmp_fast_ops)

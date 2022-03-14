@@ -228,14 +228,14 @@ void nft_construct_rule_data(struct nft_ra_info *data, struct nft_rule *rule){
   
 
     nft_rule_for_each_expr(expr, last, rule){
-        printk("Eval rule\n");
+        //printk("Eval rule\n");
         e = (unsigned long)expr->ops->eval;
         switch (state)
         {
         case NEXT_LOAD:
             if(e == (unsigned long)nft_immediate_eval){
                 imm = nft_expr_priv(expr);
-                printk("immediate verdict  %u\n", imm->data.verdict.code);
+                //printk("immediate verdict  %u\n", imm->data.verdict.code);
                 state = END;
                 break;
             }

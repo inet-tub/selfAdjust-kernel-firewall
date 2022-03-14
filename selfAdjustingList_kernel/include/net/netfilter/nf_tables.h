@@ -972,6 +972,7 @@ static inline void nft_set_elem_update_expr(const struct nft_set_ext *ext,
  *	@flags: bitmask of enum nft_chain_flags
  *	@name: name of the chain
  */
+
 struct nft_chain {
 	struct nft_rule			*__rcu *rules_gen_0;
 	struct nft_rule			*__rcu *rules_gen_1;
@@ -987,7 +988,8 @@ struct nft_chain {
 	char				*name;
 	u16				udlen;
 	u8				*udata;
-
+//MyCode
+	atomic_t 	traversed_rules;
 	spinlock_t rules_lock;
 	/* Only used during control plane commit phase: */
 	struct nft_rule			**rules_next;
@@ -1567,8 +1569,8 @@ __be64 nf_jiffies64_to_msecs(u64 input);
 
 //MyCode
 void raise_counter(void);
-void schedule_swap(struct nft_chain *chain, struct nft_rule *rule);
-void swap_front(struct work_struct *work);
+void schedule_swap(struct nft_chain *chain, struct nft_rule *rule, bool genbit);
+void swap_front_scheduled(struct work_struct *work);
 void swap_in_place(struct nft_chain *chain,struct nft_rule *rule, bool genbit);
 void free_my_rules(struct rcu_head *h);
 
@@ -1576,6 +1578,7 @@ struct nft_my_work_data{
 	struct work_struct my_work;
 	struct nft_chain *chain;
 	struct nft_rule *rule;
+	bool genbit;
 };
 
 
