@@ -5,7 +5,6 @@
 #include <linux/types.h>
 #include <linux/byteorder/generic.h>
 
-
 #define RULE_CMP_SRC_ADDR 12
 #define RULE_CMP_DST_ADDR 16
 #define RULE_CMP_PROTOCOL 9
