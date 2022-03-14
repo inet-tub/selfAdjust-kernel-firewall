@@ -12,6 +12,7 @@
 #include <linux/netfilter.h>
 
 #define NFT_MSG_GETTRAVNODES 25
+#define NFT_MSG_RESETCHAIN 26
 
 
 int main(){
@@ -27,7 +28,7 @@ int main(){
 
     family = NFPROTO_IPV4;
     t = nftnl_chain_alloc();
-    nlh = nftnl_chain_nlmsg_build_hdr(buf, NFT_MSG_GETTRAVNODES, family, 0, 0);
+    nlh = nftnl_chain_nlmsg_build_hdr(buf, NFT_MSG_RESETCHAIN, family, 0, 0);
     nftnl_chain_set_str(t, NFTNL_CHAIN_TABLE, "my_tab");
     nftnl_chain_set_str(t, NFTNL_CHAIN_NAME, "output_chain");
     nftnl_chain_nlmsg_build_payload(nlh, t);
@@ -44,7 +45,8 @@ int main(){
         printf("family %u, version %d, res_id %d\n", genmsg->nfgen_family, genmsg->version, genmsg->res_id);
         attr = (void *) (genmsg + 1);
         uint32_t *nodes = (void *)(attr+1);
-        printf("len %hu type %hu %u\n", attr->nla_len, attr->nla_type, ntohl(*nodes));
+        //printf("len %hu type %hu %u\n", attr->nla_len, attr->nla_type, ntohl(*nodes));
+        printf("len %hu type %hu %s\n", attr->nla_len, attr->nla_type, (char *)nodes);
     }
 
     mnl_socket_close(nl);
