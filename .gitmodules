@@ -1,0 +1,3 @@
+[submodule "tools/classbench-generators"]
+	path = tools/classbench-generators
+	url = https://github.com/sebymiano/classbench-generators.git
