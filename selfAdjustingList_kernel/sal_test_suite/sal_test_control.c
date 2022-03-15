@@ -48,7 +48,6 @@ int main(int argc, char **argv){
 
     nl = mnl_socket_open(NETLINK_NETFILTER);
     mnl_socket_bind(nl, 0, MNL_SOCKET_AUTOPID);
-    //portid = mnl_socket_get_portid(nl);
     mnl_socket_sendto(nl, nlh, nlh->nlmsg_len);
     ret  = mnl_socket_recvfrom(nl, buf, sizeof(buf));
     if(ret > 0){
