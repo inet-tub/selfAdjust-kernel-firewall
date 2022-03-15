@@ -24,9 +24,6 @@
 #include <linux/workqueue.h>
 #include <linux/list_mrf_extension.h>
 
-static unsigned int packet_counter = 0;
-static unsigned int work_scheduled = 0;
-static unsigned int tried_to_schedule = 0;
 
 static noinline void __nft_trace_packet(struct nft_traceinfo *info,
 					const struct nft_chain *chain,
@@ -173,38 +170,13 @@ void raise_counter(){
 	printk("in raise counter sched_held %d lock_held %d\n", rcu_read_lock_sched_held(), rcu_read_lock_held());
 }
 
-struct nft_my_old_rules {
-	struct rcu_head h;
-	struct nft_rule **start;
-};
-
-void free_my_rules(struct rcu_head *h){
-	//printk("In: %s start\n", __FUNCTION__);
-	struct nft_my_old_rules *o = container_of(h, struct nft_my_old_rules, h);
-	kvfree(o->start);
-	//printk("In: %s end\n", __FUNCTION__);
-}
-
-static struct nft_rule **nf_tables_alloc_rules(const struct nft_chain *chain, unsigned int alloc){
-	if(alloc > INT_MAX)
-		return NULL;
-	alloc +=1; //+1 because of NULL terminator
-	if(sizeof(struct nft_rule *) > INT_MAX / alloc)
-		return NULL;
-	alloc *= sizeof(struct nft_rule *);
-	alloc += sizeof(struct nft_my_old_rules);
-	return kvmalloc(alloc, GFP_KERNEL);
-}
-
 void swap_in_place(struct nft_chain *chain, struct nft_rule *matched_rule, bool genbit){
 	struct nft_rule *rule;
-	struct nft_my_old_rules *old;
+	struct nft_rule **old_rules;
 	unsigned int num_of_rules;
 	int i;
 	num_of_rules = 0;
-	packet_counter++;
 	printk("In: START %s\n",__FUNCTION__);
-	printk("Super test %u\n", packet_counter);
 	spin_lock(&chain->rules_lock);
 	rule = list_entry(&chain->rules, struct nft_rule, list);
 	if(list_is_first(&matched_rule->list, &rule->list)){
@@ -213,13 +185,11 @@ void swap_in_place(struct nft_chain *chain, struct nft_rule *matched_rule, bool 
 		return;
 	}
 	list_for_each_entry_continue(rule, &chain->rules, list) {
-		//printk("Rule %lu\n", rule->handle);
 		num_of_rules++;
 	}
-	//printk(KERN_INFO"Num of rules: %d\n", num_of_rules);
 	list_access(&matched_rule->list, &chain->rules, &rule_compare);
 	
-	chain->rules_next = nf_tables_alloc_rules(chain, num_of_rules);
+	chain->rules_next = nf_tables_chain_alloc_rules(chain, num_of_rules);
 	if(!chain->rules_next){
 		printk("Memalloc failed\n");
 		spin_unlock(&chain->rules_lock);
@@ -229,33 +199,25 @@ void swap_in_place(struct nft_chain *chain, struct nft_rule *matched_rule, bool 
 	i=0;
 	list_for_each_entry_continue(rule, &chain->rules, list) {
 		chain->rules_next[i++] = rule;
-		//printk("Rules next %lu\n", chain->rules_next[i-1]->handle);
 	}
-	chain->rules_next[i++] = NULL;
+	chain->rules_next[i] = NULL;
 
-	old =(void *) &chain->rules_next[i];
 
 	if(genbit){
-		//printk("genbt = 1\n");
-		old->start = rcu_dereference(chain->rules_gen_1);
+		old_rules = rcu_dereference(chain->rules_gen_1);
 		rcu_assign_pointer(chain->rules_gen_1, chain->rules_next);
 	}else{
-		//printk("genbt = 0\n");
-		old->start = rcu_dereference(chain->rules_gen_0);
+		old_rules = rcu_dereference(chain->rules_gen_0);
 		rcu_assign_pointer(chain->rules_gen_0, chain->rules_next);
 	}
-
-	//kvfree(chain->rules_next);
-	chain->rules_next = NULL;	
+    nf_tables_commit_chain_free_rules_old(old_rules);
+	chain->rules_next = NULL;
 	spin_unlock(&chain->rules_lock);
-	call_rcu(&old->h, free_my_rules);
-	//printk("In: END %s\n",__FUNCTION__);
 }
 
 void schedule_swap(struct nft_chain *chain, struct nft_rule *rule, bool genbit){
 	struct nft_my_work_data *work;
 	
-	printk("In: schedule_swap %u\n", ++tried_to_schedule);
 	spin_lock(&chain->rules_lock);
 	if(list_is_first(&rule->list, &chain->rules)){
 		printk("Matched rule is first - not scheduled\n");
@@ -269,12 +231,11 @@ void schedule_swap(struct nft_chain *chain, struct nft_rule *rule, bool genbit){
 	work->genbit = genbit;
 
 	INIT_WORK(&(work->my_work), swap_front_scheduled);
-	if(schedule_work(&(work->my_work))){
-		work_scheduled++;
+	if(!schedule_work(&(work->my_work))){
+        printk("dropped\n");
 		//printk("scheduled %u\n", work_scheduled);
-	}else
-		printk("dropped\n");
-	
+	}
+
 	
 }
 

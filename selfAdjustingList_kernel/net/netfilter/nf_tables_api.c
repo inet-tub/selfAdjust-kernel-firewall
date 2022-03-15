@@ -26,7 +26,6 @@
 #include <net/netfilter/nft_meta.h>
 #include <linux/spinlock.h>
 #include <linux/list_sort.h>
-static void nf_tables_commit_chain_free_rules_old(struct nft_rule **rules);
 
 #define NFT_MODULE_AUTOLOAD_LIMIT (MODULE_NAME_LEN - sizeof("nft-expr-255-"))
 
@@ -1913,13 +1912,11 @@ static void nft_chain_release_hook(struct nft_chain_hook *hook)
 	}
 	module_put(hook->type->owner);
 }
+//MyCode
+//moved struct nft_rules_old to nf_tables.h
 
-struct nft_rules_old {
-	struct rcu_head h;
-	struct nft_rule **start;
-};
-
-static struct nft_rule **nf_tables_chain_alloc_rules(const struct nft_chain *chain,
+//removed static qualifier
+struct nft_rule **nf_tables_chain_alloc_rules(const struct nft_chain *chain,
 						     unsigned int alloc)
 {
 	if (alloc > INT_MAX)
@@ -7657,6 +7654,7 @@ static int nf_tables_reset_chain_rules(struct nft_chain *chain, struct net *net)
     }
     nf_tables_commit_chain_free_rules_old(old_rules);
     atomic_set(&chain->traversed_rules, 0);
+	chain->rules_next = NULL;
     spin_unlock(&chain->rules_lock);
     return 0;
 }
@@ -8071,7 +8069,9 @@ static void __nf_tables_commit_chain_free_rules_old(struct rcu_head *h)
 	kvfree(o->start);
 }
 
-static void nf_tables_commit_chain_free_rules_old(struct nft_rule **rules)
+//MyCode
+//removed static qualifier
+void nf_tables_commit_chain_free_rules_old(struct nft_rule **rules)
 {
 	struct nft_rule **r = rules;
 	struct nft_rules_old *old;
