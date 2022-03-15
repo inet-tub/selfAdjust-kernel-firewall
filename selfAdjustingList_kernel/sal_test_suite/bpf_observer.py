@@ -45,7 +45,7 @@ BPF_PERF_OUTPUT(trav_rules);
        	}
        	
        	data.ctrl = 'e';
-       	data.handle = 0;
+       	bpf_probe_read_kernel(&data.handle, sizeof(int), &chain->traversed_rules); 
        	trav_rules.perf_submit(ctx, &data, sizeof(data));       	
        	
         return 0;
@@ -54,13 +54,15 @@ BPF_PERF_OUTPUT(trav_rules);
 b = BPF(text=prog)
 
 def print_trav_rules(cpu, data, size):
+	out = ""
 	rule_data = b["trav_rules"].event(data)
 	if rule_data.ctrl == b's':
-		print("BEGIN")
+		out = "BEGIN "
 	elif rule_data.ctrl == b'r':
-		print(rule_data.handle)
+		out += str(rule_data.handle) + " "
 	elif rule_data.ctrl == b'e':
-		print("END")
+		out += "END\nTraversed Nodes: " + str(rule_data.handle)
+	print(out.strip())
 
 b["trav_rules"].open_perf_buffer(print_trav_rules)
 while 1:
