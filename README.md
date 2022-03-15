@@ -38,6 +38,7 @@
 - generating rules and pcap traffic using [classbench](https://github.com/sebymiano/classbench-generators)
   - generated packets are turned into .pcap file with `classbench-to-pcap.py`
   - generated packets are turned into rules using `classbench-to-iptables.py` which creates a set of iptable rules
+    - the classbench repository can be found as a submodule in `./tools`
   - these rules are then converted to nft rules using `iptables-to-nft.py` (find this in the tools dir)
     - the output comes in the form that can be used for a .nf script
 - replay the traffic with tcpreplay => machines need to be connected on the same link/over the same bridge
