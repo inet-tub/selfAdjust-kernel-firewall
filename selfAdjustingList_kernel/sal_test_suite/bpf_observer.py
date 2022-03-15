@@ -1,10 +1,13 @@
 from bcc import BPF
 from bcc.utils import printb
+import sys
+
 prog = """
 #include <net/netfilter/nf_tables.h>
 #include <linux/types.h>
 struct rule_handle_t{
 	char ctrl;
+	int a;
 	u64 handle;
 };
 
@@ -21,7 +24,9 @@ BPF_PERF_OUTPUT(trav_rules);
         struct rule_handle_t data;
         data.ctrl = 's';
         data.handle = 0;
+        atomic_t a;
         trav_rules.perf_submit(ctx, &data, sizeof(data));
+        
          
         //bpf_trace_printk("Hello World %u \\n", chain->traversed_rules);
        	if(genbit){
@@ -45,12 +50,27 @@ BPF_PERF_OUTPUT(trav_rules);
        	}
        	
        	data.ctrl = 'e';
-       	bpf_probe_read_kernel(&data.handle, sizeof(int), &chain->traversed_rules); 
+       	bpf_trace_printk("trav_rules %d \\n", chain->traversed_rules);
+       	bpf_probe_read_kernel(&a, sizeof(int), &chain->traversed_rules);
+       	data.a = atomic_read(&a); 
        	trav_rules.perf_submit(ctx, &data, sizeof(data));       	
        	
         return 0;
     }
 """
+
+debug_print = """
+	#include <net/netfilter/nf_tables.h>
+    unsigned int kprobe__nft_do_chain(struct pt_regs *ctx, struct nft_pktinfo *pkt, void *priv) {
+        const struct nft_chain *chain = priv;
+        bpf_trace_printk("Hello World %u \\n", chain->traversed_rules);
+		return 0;
+	}
+"""
+# p = BPF(text=debug_print)
+# p.trace_print()
+# sys.exit(0)
+
 b = BPF(text=prog)
 
 def print_trav_rules(cpu, data, size):
@@ -61,7 +81,7 @@ def print_trav_rules(cpu, data, size):
 	elif rule_data.ctrl == b'r':
 		out += str(rule_data.handle) + " "
 	elif rule_data.ctrl == b'e':
-		out += "END\nTraversed Nodes: " + str(rule_data.handle)
+		out += "END\nTraversed Nodes: " + str(rule_data.a)
 	print(out.strip())
 
 b["trav_rules"].open_perf_buffer(print_trav_rules)
