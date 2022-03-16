@@ -62,6 +62,8 @@ static void nft_bitwise_fast_eval(const struct nft_expr *expr,
 	*dst = (*src & priv->mask) ^ priv->xor;
 }
 
+//MyCode
+//removed static
 void nft_cmp_fast_eval(const struct nft_expr *expr,
 			      struct nft_regs *regs)
 {
@@ -235,8 +237,6 @@ void schedule_swap(struct nft_chain *chain, struct nft_rule *rule, bool genbit){
         printk("dropped\n");
 		//printk("scheduled %u\n", work_scheduled);
 	}
-
-	
 }
 
 void swap_front_scheduled(struct work_struct *work){
@@ -260,7 +260,7 @@ nft_do_chain(struct nft_pktinfo *pkt, void *priv)
 	struct nft_jumpstack jumpstack[NFT_JUMP_STACK_SIZE];
 	bool genbit = READ_ONCE(net->nft.gencursor);
 	struct nft_traceinfo info;
-	
+
 	//int cpu = smp_processor_id();
 	//int my_counter = nf_tables_counter;
 	//printk(KERN_INFO "start with coutner: %d cpu: %d\n", my_counter, cpu);
