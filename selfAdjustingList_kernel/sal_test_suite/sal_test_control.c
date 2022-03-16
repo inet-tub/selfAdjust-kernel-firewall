@@ -14,13 +14,18 @@
 #define NFT_MSG_GETTRAVNODES 25
 #define NFT_MSG_RESETCHAIN 26
 
+struct req_ret {
+    struct nlmsghdr nlh;
+    struct nfgenmsg genmsg;
+    struct nlattr attr;
+    char data[0];
+};
+
 
 int main(int argc, char **argv){
     struct mnl_socket *nl;
     char buf [MNL_SOCKET_BUFFER_SIZE];
     struct nlmsghdr *nlh;
-    struct nfgenmsg *genmsg;
-    struct nlattr *attr;
     struct nftnl_chain *t = NULL;
     int ret;
     int family;
@@ -51,14 +56,21 @@ int main(int argc, char **argv){
     mnl_socket_sendto(nl, nlh, nlh->nlmsg_len);
     ret  = mnl_socket_recvfrom(nl, buf, sizeof(buf));
     if(ret > 0){
-        nlh =(void *) buf;
-        printf("len: %u type: %hu, flags: %hu, nlmsg_seq: %u, portid: %u\n", nlh->nlmsg_len, nlh->nlmsg_type,nlh->nlmsg_flags, nlh->nlmsg_seq, nlh->nlmsg_pid);
-        genmsg = NLMSG_DATA(nlh);
-        printf("family %u, version %d, res_id %d\n", genmsg->nfgen_family, genmsg->version, genmsg->res_id);
-        attr = (void *) (genmsg + 1);
-        uint32_t *nodes = (void *)(attr+1);
-        //printf("len %hu type %hu %u\n", attr->nla_len, attr->nla_type, ntohl(*nodes));
-        printf("len %hu type %hu %s\n", attr->nla_len, attr->nla_type, (char *)nodes);
+        struct req_ret *ret = (struct req_ret *)buf;
+        printf("len: %u type: %hu, flags: %hu, nlmsg_seq: %u, portid: %u\n", ret->nlh.nlmsg_len, ret->nlh.nlmsg_type, ret->nlh.nlmsg_flags, ret->nlh.nlmsg_seq, ret->nlh.nlmsg_pid);
+        printf("family %u, version %d, res_id %d\n", ret->genmsg.nfgen_family, ret->genmsg.version, ret->genmsg.res_id);
+        switch(ret->nlh.nlmsg_type & 0x00ff) {
+            case NFT_MSG_RESETCHAIN:
+                printf("len %hu type %hu %s\n", ret->attr.nla_len, ret->attr.nla_type, ret->data);
+                break;
+            case NFT_MSG_GETTRAVNODES:
+                printf("len %hu type %hu %d\n", ret->attr.nla_len, ret->attr.nla_type, ntohl(*(int *)ret->data));
+                break;
+            default:
+                printf("Unknown answer...\n");
+                return -3;
+        }
+
     }
 
     mnl_socket_close(nl);
