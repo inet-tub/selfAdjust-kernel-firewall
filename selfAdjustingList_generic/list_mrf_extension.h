@@ -30,4 +30,22 @@ list_access(struct list_head *pos, struct list_head *head, int(*is_dependent)(st
     }
 }
 
+static inline void
+list_access_rec(struct list_head *pos, struct list_head *head, int(*is_dependent)(struct list_head *a, struct list_head *b))
+{
+    struct list_head *cur;
+    struct list_head *prev;
+    cur = pos;
+    if(list_is_first(cur, head)){
+        return;
+    }
+    prev = cur->prev;
+    if(is_dependent(prev, cur))
+        list_access_rec(prev, head, is_dependent);
+    else{
+        list_swap(cur, prev);
+        list_access_rec(cur, head, is_dependent);
+    }
+}
+
 #endif //SELFADJUSTINGLIST_GENERIC_LIST_MRF_EXTENSION_H

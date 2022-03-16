@@ -189,6 +189,7 @@ void swap_in_place(struct nft_chain *chain, struct nft_rule *matched_rule, bool 
 	list_for_each_entry_continue(rule, &chain->rules, list) {
 		num_of_rules++;
 	}
+	//list_access_rec(&matched_rule->list, &chain->rules, &rule_compare);
 	list_access(&matched_rule->list, &chain->rules, &rule_compare);
 	
 	chain->rules_next = nf_tables_chain_alloc_rules(chain, num_of_rules);
