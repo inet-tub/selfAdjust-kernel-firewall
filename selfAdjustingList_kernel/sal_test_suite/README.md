@@ -1,8 +1,8 @@
 # sal_test_control
 install these libraries
 
-- libmnl
-- libnftnl
+- libmnl `apt install libmnl-dev libmnl0`
+- libnftnl `apt install libnftnl-dev libnftnl11`
 
 # bpf_observer.py
 to run bpf_observer:
