@@ -7662,7 +7662,7 @@ static int nf_tables_reset_chain_rules(struct nft_chain *chain, struct net *net)
 static int nf_tables_fill_resetchain_info(struct sk_buff *skb, struct nft_chain *chain, u32 portid, u32 seq) {
     struct nlmsghdr *nlh;
     struct nfgenmsg *nfmsg;
-    int event = nfnl_msg_type(NFNL_SUBSYS_NFTABLES, NFT_MSG_GETTRAVNODES);
+    int event = nfnl_msg_type(NFNL_SUBSYS_NFTABLES, NFT_MSG_RESETCHAIN);
     nlh = nlmsg_put(skb, portid, seq, event, sizeof(struct nfgenmsg), 0);
     if(nlh == NULL)
         goto nla_put_failure;
