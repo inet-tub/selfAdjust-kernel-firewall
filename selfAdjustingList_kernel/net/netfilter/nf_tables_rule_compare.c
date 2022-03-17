@@ -55,7 +55,7 @@ int rule_compare(struct list_head *prev, struct list_head *matched){
         return 0;
 }
 
-
+//states of state machine
 enum ra_state {
     START = 0,
     NEXT_LOAD,
