@@ -50,7 +50,6 @@ int rule_compare(struct list_head *prev, struct list_head *matched){
         //print_rule_info(&r->cmp_data);
        return 1;
     }
-    
  
     else
         return 0;
@@ -65,6 +64,9 @@ enum ra_state {
     FIELD_SET,
     END,
     UNEXPECTED,
+
+    VALUE_COMPARED,
+    BITMASK_LOADED,
 };
 
 static u8 nft_ra_payload(struct nft_expr *expr){
@@ -75,6 +77,7 @@ static u8 nft_ra_payload(struct nft_expr *expr){
     switch (payload->base)
     {
     case NFT_PAYLOAD_LL_HEADER:
+        printk("L2 Not supported\n");
         BUG();
         break;
     case NFT_PAYLOAD_NETWORK_HEADER:
@@ -148,7 +151,7 @@ static void nft_ra_cmp(struct nft_ra_info *data, struct nft_expr *expr, u8 f, u8
         data->range[DPORT][HIGHDIM] = (u32)*(u16 *)&val;
         return;
     }
-    //If a rule provded a subnet mask
+    //If a rule provided a subnet mask
     if((f == SADDR || f == DADDR)&& *prefix_mask != 0){
         data->range[f][LOWDIM] = val + 1;
         data->range[f][HIGHDIM] = val + ~(*prefix_mask);
@@ -187,7 +190,7 @@ static inline u32 nft_ra_bitwise(struct nft_expr *expr){
 }
 
 static void nft_ra_meta_cmp(struct nft_ra_info *data, struct nft_meta *meta, struct nft_expr *expr){
-     struct nft_cmp_fast_expr *cmp = nft_expr_priv(expr);
+    struct nft_cmp_fast_expr *cmp = nft_expr_priv(expr);
     switch (meta->key)
     {
     case NFT_META_L4PROTO:
@@ -201,7 +204,15 @@ static void nft_ra_meta_cmp(struct nft_ra_info *data, struct nft_meta *meta, str
     }
 }
 
-
+/**
+ * nft_construct_rule_data - Analyses the bytecode in the rule and stores the extracted information in data
+ * it only extracts src_ip, dst_ip, src_port, dst_port, L4-protocol
+ * any other check of a rule leads to a BUG() call
+ * rules that uses sets are also not supported and a use of set will also cause a BUG()
+ * the rule->handle will be used as priority for data
+ * @data: this is where the extracted information are stored
+ * @rule: the rule containing the bytecode which needs to be analyzed
+ */
 
 void nft_construct_rule_data(struct nft_ra_info *data, struct nft_rule *rule){
     struct nft_expr *expr, *last;
@@ -228,10 +239,94 @@ void nft_construct_rule_data(struct nft_ra_info *data, struct nft_rule *rule){
     data->priority = rule->handle;
   
 
-    nft_rule_for_each_expr(expr, last, rule){
+    nft_rule_for_each_expr(expr, last, rule)
+    {
         //printk("Eval rule\n");
-        e = (unsigned long)expr->ops->eval;
-        switch (state)
+        e = (unsigned long) expr->ops->eval;
+        switch (state) {
+            case START:
+                //printk("Start\n");
+                if (e == (unsigned long) nft_payload_eval) {
+                    range_field = nft_ra_payload(expr);
+                    state = PAYLOAD_LOADED;
+                } else if (e == (unsigned long) nft_meta_get_eval) {
+                    meta = nft_expr_priv(expr);
+                    state = META_LOADED;
+                } else {
+                    state = UNEXPECTED;
+                }
+                break;
+            case META_LOADED:
+                //printk("META_LOADED\n");
+                if (e == (unsigned long) nft_cmp_eval) {
+                    state = UNEXPECTED;
+                } else if (expr->ops == &nft_cmp_fast_ops) {
+                    nft_ra_meta_cmp(data, meta, expr); //set protocol
+                    state = VALUE_COMPARED;
+                } else {
+                    state = UNEXPECTED;
+                }
+                break;
+            case PAYLOAD_LOADED:
+                //printk("PAYLOAD_LOADED\n");
+                if (e == (unsigned long) nft_cmp_eval) {
+                    /*for more complicated comparisons*/
+                    nft_ra_cmp(data, expr, range_field, 0, &prefix_mask);
+                    state = VALUE_COMPARED;
+                } else if (expr->ops == &nft_cmp_fast_ops) {
+                    nft_ra_cmp(data, expr, range_field, 1, &prefix_mask);
+                    state = VALUE_COMPARED;
+                } else if (expr->ops == &nft_bitwise_fast_ops) {
+                    prefix_mask = nft_ra_bitwise(expr);
+                    state = BITMASK_LOADED;
+                } else {
+                    state = UNEXPECTED;
+                }
+                break;
+            case VALUE_COMPARED:
+                //printk("VALUE_COMPARED\n");
+                if (e == (unsigned long) nft_payload_eval) {
+                    range_field = nft_ra_payload(expr);
+                    state = PAYLOAD_LOADED;
+                } else if (e == (unsigned long) nft_meta_get_eval) {
+                    meta = nft_expr_priv(expr);
+                    state = META_LOADED;
+                } else if (e == (unsigned long) nft_cmp_eval) {
+                    /*for more complicated comparisons*/
+                    nft_ra_cmp(data, expr, range_field, 0, &prefix_mask);
+                    state = VALUE_COMPARED;
+                } else if (e == (unsigned long) nft_immediate_eval) {
+                    imm = nft_expr_priv(expr);
+                    //printk("immediate verdict  %u\n", imm->data.verdict.code);
+                    state = END;
+                } else {
+                    state = UNEXPECTED;
+                }
+                break;
+            case BITMASK_LOADED:
+                //printk("BITMASK_LOADED\n");
+                if (e == (unsigned long) nft_cmp_eval) {
+                    /*for more complicated comparisons*/
+                    nft_ra_cmp(data, expr, range_field, 0, &prefix_mask);
+                    state = VALUE_COMPARED;
+                } else if (expr->ops == &nft_cmp_fast_ops) {
+                    nft_ra_cmp(data, expr, range_field, 1, &prefix_mask);
+                    state = VALUE_COMPARED;
+                } else {
+                    state = UNEXPECTED;
+                }
+                break;
+            default:
+                printk("Bytecode Function not supported\n");
+                BUG();
+        }
+    }
+    if (state != END)
+        BUG();
+    //print_rule_info(data);
+
+        //V2
+        /*switch (state)
         {
         case NEXT_LOAD:
             if(e == (unsigned long)nft_immediate_eval){
@@ -255,7 +350,7 @@ void nft_construct_rule_data(struct nft_ra_info *data, struct nft_rule *rule){
             break;
         case PAYLOAD_LOADED:
             if(e == (unsigned long)nft_cmp_eval){
-                /*for more complicated comparisons*/
+                //for more complicated comparisons
                 nft_ra_cmp(data, expr, range_field, 0, &prefix_mask);
                 state = PAYLOAD_LOADED;
             }else if(expr->ops == &nft_cmp_fast_ops){
@@ -291,7 +386,7 @@ void nft_construct_rule_data(struct nft_ra_info *data, struct nft_rule *rule){
             BUG();
             break;
         }
-    }
+    }*/
     //print_rule_info(data);
 
 }
