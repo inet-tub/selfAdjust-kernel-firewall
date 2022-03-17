@@ -63,6 +63,9 @@ enum ra_state {
     FIELD_SET,
     END,
     UNEXPECTED,
+
+    VALUE_COMPARED,
+    BISTMASK_LOADED,
 };
 
 static u8 nft_ra_payload(struct nft_expr *expr){
