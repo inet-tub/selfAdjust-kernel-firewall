@@ -50,6 +50,7 @@ int rule_compare(struct list_head *prev, struct list_head *matched){
         //print_rule_info(&r->cmp_data);
        return 1;
     }
+    
  
     else
         return 0;
