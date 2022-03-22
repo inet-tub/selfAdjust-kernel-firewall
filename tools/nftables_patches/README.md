@@ -8,7 +8,7 @@ cd ..
 ```
 
 - apply these patches
-- make sure that the paths 
+- make sure that the paths are correct
 ```bash
 patch -ruN -d nftables/src/ < nftables_patches/nft2_src.patch
 patch -ruN -d nftables/include/ < nftables_patches/nft2_include.patch
