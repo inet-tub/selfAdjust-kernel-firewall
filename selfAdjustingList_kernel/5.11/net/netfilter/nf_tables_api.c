@@ -1671,8 +1671,10 @@ static void nf_tables_chain_free_chain_rules(struct nft_chain *chain)
 		kvfree(g1);
 	kvfree(g0);
 
-	/* should be NULL either via abort or via successful commit */
+
+	//MyCode
 	spin_lock(&chain->rules_lock);
+	/* should be NULL either via abort or via successful commit */
 	WARN_ON_ONCE(chain->rules_next);
 	kvfree(chain->rules_next);
 	spin_unlock(&chain->rules_lock);
@@ -7629,6 +7631,7 @@ static int nf_tables_reset_chain_rules(struct nft_chain *chain, struct net *net)
     int i;
     bool genbit;
     num_rules = 0;
+    //MyCode
     spin_lock(&chain->rules_lock);
     genbit = net->nft.gencursor;
     list_sort(NULL, &chain->rules, nf_tables_rule_sort);
@@ -7654,7 +7657,7 @@ static int nf_tables_reset_chain_rules(struct nft_chain *chain, struct net *net)
     }
     nf_tables_commit_chain_free_rules_old(old_rules);
     atomic_set(&chain->traversed_rules, 0);
-	chain->rules_next = NULL;
+    chain->rules_next = NULL;
     spin_unlock(&chain->rules_lock);
     return 0;
 }
@@ -8013,6 +8016,7 @@ static int nf_tables_commit_chain_prepare(struct net *net, struct nft_chain *cha
 	struct nft_rule *rule;
 	unsigned int alloc = 0;
 	int i;
+	//MyCode
 	spin_lock(&chain->rules_lock);
 	/* already handled or inactive chain? */
 	if (chain->rules_next || !nft_is_active_next(net, chain)){
@@ -8055,6 +8059,7 @@ static void nf_tables_commit_chain_prepare_cancel(struct net *net)
 
 		if (trans->msg_type == NFT_MSG_NEWRULE ||
 		    trans->msg_type == NFT_MSG_DELRULE) {
+		    	//MyCode
 			spin_lock(&chain->rules_lock);
 			kvfree(chain->rules_next);
 			chain->rules_next = NULL;
@@ -8090,6 +8095,7 @@ static void nf_tables_commit_chain(struct net *net, struct nft_chain *chain)
 {
 	struct nft_rule **g0, **g1;
 	bool next_genbit;
+	//MyCode
 	spin_lock(&chain->rules_lock);
 	next_genbit = nft_gencursor_next(net);
 
