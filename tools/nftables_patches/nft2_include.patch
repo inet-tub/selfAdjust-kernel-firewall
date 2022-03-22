@@ -1,0 +1,11 @@
+diff -ruN nftables/include/rule.h nftables_patch/include/rule.h
+--- nftables/include/rule.h	2022-03-22 13:29:01.850148475 +0100
++++ nftables_patch/include/rule.h	2022-03-21 21:14:30.148226000 +0100
+@@ -84,6 +84,7 @@
+ 	uint32_t		chain_id;
+ 	uint32_t		rule_id;
+ 	uint32_t		position_id;
++    uint32_t        priority;
+ };
+ 
+ extern void handle_merge(struct handle *dst, const struct handle *src);

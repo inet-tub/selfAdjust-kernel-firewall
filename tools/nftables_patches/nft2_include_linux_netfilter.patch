@@ -1,0 +1,11 @@
+diff -ruN nftables/include/linux/netfilter/nf_tables.h nftables_patch/include/linux/netfilter/nf_tables.h
+--- nftables/include/linux/netfilter/nf_tables.h	2022-03-22 13:29:01.850148475 +0100
++++ nftables_patch/include/linux/netfilter/nf_tables.h	2022-03-21 20:53:07.478313000 +0100
+@@ -254,6 +254,7 @@
+ 	NFTA_RULE_ID,
+ 	NFTA_RULE_POSITION_ID,
+ 	NFTA_RULE_CHAIN_ID,
++    NFTA_RULE_PRIORITY,
+ 	__NFTA_RULE_MAX
+ };
+ #define NFTA_RULE_MAX		(__NFTA_RULE_MAX - 1)

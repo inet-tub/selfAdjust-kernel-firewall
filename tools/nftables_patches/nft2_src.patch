@@ -1,0 +1,130 @@
+diff -ruN nftables/src/libnftables.c nftables_patch/src/libnftables.c
+--- nftables/src/libnftables.c	2022-03-22 13:29:01.854148461 +0100
++++ nftables_patch/src/libnftables.c	2022-03-22 12:46:49.492532000 +0100
+@@ -417,8 +417,9 @@
+ 	struct cmd *cmd;
+ 
+ 	flags = cache_evaluate(nft, cmds);
+-	if (cache_update(nft, flags, msgs) < 0)
+-		return -1;
++	if (cache_update(nft, flags, msgs) < 0) {
++        return -1;
++    }
+ 
+ 	list_for_each_entry(cmd, cmds, list) {
+ 		struct eval_ctx ectx = {
+@@ -426,12 +427,14 @@
+ 			.msgs	= msgs,
+ 		};
+ 		if (cmd_evaluate(&ectx, cmd) < 0 &&
+-		    ++nft->state->nerrs == nft->parser_max_errors)
+-			return -1;
++		    ++nft->state->nerrs == nft->parser_max_errors) {
++            return -1;
++        }
+ 	}
+ 
+-	if (nft->state->nerrs)
+-		return -1;
++	if (nft->state->nerrs) {
++        return -1;
++    }
+ 
+ 	list_for_each_entry(cmd, cmds, list) {
+ 		if (cmd->op != CMD_ADD)
+@@ -452,16 +455,16 @@
+ 	LIST_HEAD(cmds);
+ 	char *nlbuf;
+ 
++
+ 	nlbuf = xzalloc(strlen(buf) + 2);
+ 	sprintf(nlbuf, "%s\n", buf);
+ 
+ 	if (nft_output_json(&nft->output))
+-		rc = nft_parse_json_buffer(nft, nlbuf, &msgs, &cmds);
++        rc = nft_parse_json_buffer(nft, nlbuf, &msgs, &cmds);
+ 	if (rc == -EINVAL)
+-		rc = nft_parse_bison_buffer(nft, nlbuf, &msgs, &cmds);
++        rc = nft_parse_bison_buffer(nft, nlbuf, &msgs, &cmds);
+ 
+ 	parser_rc = rc;
+-
+ 	rc = nft_evaluate(nft, &msgs, &cmds);
+ 	if (rc < 0) {
+ 		if (errno == EPERM) {
+diff -ruN nftables/src/mnl.c nftables_patch/src/mnl.c
+--- nftables/src/mnl.c	2022-03-22 13:29:01.854148461 +0100
++++ nftables_patch/src/mnl.c	2022-03-22 12:46:49.504532000 +0100
+@@ -507,6 +507,9 @@
+ 	else
+ 		mnl_attr_put_strz(nlh, NFTA_RULE_CHAIN, h->chain.name);
+ 
++    //MyCode
++    mnl_attr_put_u32(nlh, NFTA_RULE_PRIORITY, htonl(h->priority));
++
+ 	mnl_nft_rule_build_ctx_init(&rule_ctx, nlh, cmd, &lctx);
+ 
+ 	nest = mnl_attr_nest_start(nlh, NFTA_RULE_EXPRESSIONS);
+diff -ruN nftables/src/parser_bison.y nftables_patch/src/parser_bison.y
+--- nftables/src/parser_bison.y	2022-03-22 13:29:01.858148445 +0100
++++ nftables_patch/src/parser_bison.y	2022-03-22 12:46:49.500532000 +0100
+@@ -593,7 +593,8 @@
+ %type <handle>			set_spec setid_spec set_identifier flowtableid_spec flowtable_identifier obj_spec objid_spec obj_identifier
+ %destructor { handle_free(&$$); } set_spec setid_spec set_identifier flowtableid_spec obj_spec objid_spec obj_identifier
+ %type <val>			family_spec family_spec_explicit
+-%type <val32>			int_num	chain_policy
++/*MyCode prio added*/
++%type <val32>			int_num	chain_policy prio
+ %type <prio_spec>		extended_prio_spec prio_spec
+ %type <string>			extended_prio_name quota_unit
+ %destructor { xfree($$); }	extended_prio_name quota_unit
+@@ -968,12 +969,15 @@
+ 				close_scope(state);
+ 				$$ = cmd_alloc(CMD_ADD, CMD_OBJ_CHAIN, &$2, &@$, $5);
+ 			}
+-			|	RULE		rule_position	rule
++			/*MyCode*/
++			|	RULE		rule_position	rule    prio
+ 			{
++			    $2.priority = $4;
+ 				$$ = cmd_alloc(CMD_ADD, CMD_OBJ_RULE, &$2, &@$, $3);
+ 			}
+-			|	/* empty */	rule_position	rule
++			|	/* empty */	rule_position	rule    prio
+ 			{
++			    $1.priority = $3;
+ 				$$ = cmd_alloc(CMD_ADD, CMD_OBJ_RULE, &$1, &@$, $2);
+ 			}
+ 			|	SET		set_spec	set_block_alloc
+@@ -5491,4 +5495,10 @@
+ 			|	MH	{ $$ = IPPROTO_MH; }
+ 			;
+ 
++/*MyCode*/
++prio            : PRIORITY int_num
++    {
++        $$=$2;
++    }
++
+ %%
+diff -ruN nftables/src/rule.c nftables_patch/src/rule.c
+--- nftables/src/rule.c	2022-03-22 13:29:01.858148445 +0100
++++ nftables_patch/src/rule.c	2022-03-22 12:49:37.387729000 +0100
+@@ -135,6 +135,9 @@
+ 		dst->position = src->position;
+ 	if (dst->index.id == 0)
+ 		dst->index = src->index;
++    //MyCode
++    if (dst->priority == 0)
++        dst->priority = src->priority;
+ }
+ 
+ static int cache_init_tables(struct netlink_ctx *ctx, struct handle *h,
+@@ -1478,7 +1481,6 @@
+ 		      void *data)
+ {
+ 	struct cmd *cmd;
+-
+ 	cmd = xzalloc(sizeof(*cmd));
+ 	init_list_head(&cmd->list);
+ 	cmd->op       = op;
