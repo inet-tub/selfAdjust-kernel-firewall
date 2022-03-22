@@ -545,7 +545,7 @@ config SAL_PRIORITY
 	depends on SAL_GENERAL
 	
 config SAL_DEFER_UPDATE
-	bool "Should the MRF algorithm deferred"
+	bool "Should the MRF algorithm be deferred"
 	depends on SAL_GENERAL
 
 
