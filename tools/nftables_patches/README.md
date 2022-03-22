@@ -4,6 +4,7 @@
 git clone -n git://git.netfilter.org/nftables
 cd nftables
 git checkout c487209984d5d7c504255a79815e937802b4f020
+cd ..
 ```
 
 - apply these patches
