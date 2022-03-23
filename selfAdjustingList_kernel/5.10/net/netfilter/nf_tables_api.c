@@ -3346,18 +3346,16 @@ static int nf_tables_newrule(struct net *net, struct sock *nlsk,
 		info[i].ops = NULL;
 		expr = nft_expr_next(expr);
 	}
-
 #ifdef CONFIG_SAL_GENERAL
 	if(nla[NFTA_RULE_PRIORITY]){
         rule->priority = be32_to_cpu(nla_get_be32(nla[NFTA_RULE_PRIORITY]));
-		printk("prio: %u", be32_to_cpu(nla_get_be32(nla[NFTA_RULE_PRIORITY])));
 	}else{
         rule->priority = rule->handle;
     }
 #endif
 
 //MyCode
-#ifdef CONFIG_SAL_MEMLES_HELPER_STRUCT
+#ifdef CONFIG_SAL_MEMLESS_HELPER_STRUCT
 	nft_construct_rule_data(&rule->cmp_data, rule);
 #endif
 

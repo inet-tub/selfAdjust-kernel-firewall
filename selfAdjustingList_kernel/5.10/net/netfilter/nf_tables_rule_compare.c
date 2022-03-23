@@ -309,7 +309,7 @@ void nft_construct_rule_data(struct nft_ra_info *data, struct nft_rule *rule){
             break;
         }
     }
-    //print_rule_info(data);
+    print_rule_info(data);
 
 }
 #endif

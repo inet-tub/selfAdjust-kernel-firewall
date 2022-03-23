@@ -204,13 +204,14 @@ void swap_front_scheduled(struct work_struct *work){
 }
 #endif // CONFIG_SAL_DEFER_WORK
 
+
 void swap_in_place(struct nft_chain *chain, struct nft_rule *matched_rule, bool genbit){
 	struct nft_rule *rule;
 	struct nft_rule **old_rules;
 	unsigned int num_of_rules;
 	int i;
 	num_of_rules = 0;
-	printk("In: START %s\n",__FUNCTION__);
+//	printk("In: START %s\n",__FUNCTION__);
 #ifdef CONFIG_SAL_LOCKING_ENABLE
 	spin_lock(&chain->rules_lock);
 #endif
@@ -225,8 +226,9 @@ void swap_in_place(struct nft_chain *chain, struct nft_rule *matched_rule, bool 
 	list_for_each_entry_continue(rule, &chain->rules, list) {
 		num_of_rules++;
 	}
-	list_access(&matched_rule->list, &chain->rules, &rule_compare);
 	
+	list_access(&matched_rule->list, &chain->rules, &rule_compare);
+
 	chain->rules_next = nf_tables_chain_alloc_rules(chain, num_of_rules);
 	if(!chain->rules_next){
 		printk("Memalloc failed\n");
