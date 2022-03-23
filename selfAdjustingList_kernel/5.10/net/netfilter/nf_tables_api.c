@@ -2797,7 +2797,7 @@ static const struct nla_policy nft_rule_policy[NFTA_RULE_MAX + 1] = {
 	[NFTA_RULE_ID]		= { .type = NLA_U32 },
 	[NFTA_RULE_POSITION_ID]	= { .type = NLA_U32 },
 	[NFTA_RULE_CHAIN_ID]	= { .type = NLA_U32 },
-#ifdef CONFIG_SAL_PRIORITY
+#ifdef CONFIG_SAL_GENERAL
 	//MyCode
 	[NFTA_RULE_PRIORITY]	= { .type = NLA_U32 },
 #endif
@@ -3347,11 +3347,13 @@ static int nf_tables_newrule(struct net *net, struct sock *nlsk,
 		expr = nft_expr_next(expr);
 	}
 
-#ifdef CONFIG_SAL_PRIORITY
+#ifdef CONFIG_SAL_GENERAL
 	if(nla[NFTA_RULE_PRIORITY]){
         rule->priority = be32_to_cpu(nla_get_be32(nla[NFTA_RULE_PRIORITY]));
 		printk("prio: %u", be32_to_cpu(nla_get_be32(nla[NFTA_RULE_PRIORITY])));
-	}
+	}else{
+        rule->priority = rule->handle;
+    }
 #endif
 
 //MyCode

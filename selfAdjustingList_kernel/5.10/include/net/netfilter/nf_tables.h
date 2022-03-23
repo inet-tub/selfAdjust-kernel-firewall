@@ -885,7 +885,7 @@ struct nft_rule {
 #ifdef CONFIG_SAL_MEMLESS_HELPER_STRUCT
 	struct nft_ra_info cmp_data;
 #endif
-#ifdef CONFIG_SAL_PRIORITY
+#ifdef CONFIG_SAL_GENERAL
     u32             priority;
 #endif
 	u64				handle:42,

@@ -62,7 +62,7 @@ int rule_compare(struct list_head *prev, struct list_head *matched){
     }
 
     // a low number in the priority field is a high priority
-    if(prev_info->priority < r_info->priority){
+    if(prev_rule->priority < r->priority){
         printk("Rule %llu is a dependecy of Rule %llu\n", (long long unsigned int)prev_rule->handle, (long long unsigned int)r->handle);
         //print_rule_info(&prev_rule->cmp_data);
         //print_rule_info(&r->cmp_data);
@@ -241,11 +241,7 @@ void nft_construct_rule_data(struct nft_ra_info *data, struct nft_rule *rule){
     data->range[DPORT][HIGHDIM] = 0xffff;
     data->range[PROTO][LOWDIM] = 0;
     data->range[PROTO][HIGHDIM] = 0;
-#ifdef CONFIG_SAL_PRIORITY
     data->priority = rule->priority;
-#else
-    data->priority = rule->handle;
-#endif
 
   
 

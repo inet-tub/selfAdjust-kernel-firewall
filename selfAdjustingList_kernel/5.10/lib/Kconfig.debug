@@ -540,15 +540,9 @@ config SAL_LOCKING_ENABLE
 config SAL_DEBUG
 	bool "Adding statistics such as traversed nodes counter and debugging back end"
 	
-config SAL_PRIORITY
-	bool "Enable setting priorities send by the front end"
-	depends on SAL_GENERAL
-	
 config SAL_DEFER_UPDATE
 	bool "Should the MRF algorithm be deferred"
 	depends on SAL_GENERAL
-
-
 
 endmenu
 

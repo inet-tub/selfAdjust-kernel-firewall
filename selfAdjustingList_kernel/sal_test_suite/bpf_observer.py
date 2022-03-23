@@ -44,7 +44,7 @@ BPF_PERF_OUTPUT(trav_rules);
        		rule = *rules;
        		if(!rule)
        			break; 
-       		data.handle = rule->cmp_data.priority;
+       		data.handle = rule->priority;
        		trav_rules.perf_submit(ctx, &data, sizeof(data));
        		//bpf_trace_printk("%lu \\n", rule->cmp_data.priority);
        	}
