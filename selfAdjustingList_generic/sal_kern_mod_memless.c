@@ -66,15 +66,25 @@ static int sal_memless_init(void){
     e.priority = 6;
     e.src_port = 8080;
     e.dst_port = 22;
-
+/*
     list_add_tail(&a.list, &my_list);
     list_add_tail(&b.list, &my_list);
     list_add_tail(&c.list, &my_list);
     list_add_tail(&d.list, &my_list);
     list_add_tail(&e.list, &my_list);
-
+*/
+    printk("%p %p %p %p\n", &a.list, &my_list, &depends, &list_sal_insert);
+    list_sal_insert(&b.list, &my_list, &depends);
     print_list(&my_list);
-
+    list_sal_insert(&c.list, &my_list, &depends);
+    print_list(&my_list);
+    list_sal_insert(&d.list, &my_list, &depends);
+    print_list(&my_list);
+    list_sal_insert(&e.list, &my_list, &depends);
+    print_list(&my_list);
+    list_sal_insert(&a.list, &my_list, &depends);
+    print_list(&my_list);
+    return 0;
     list_access(&e.list, &my_list, &depends);
     printk("Accessing prio: %d\n", e.priority);
     print_list(&my_list);
