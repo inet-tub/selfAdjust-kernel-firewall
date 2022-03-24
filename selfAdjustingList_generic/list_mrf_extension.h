@@ -69,6 +69,41 @@ list_access_rec(struct list_head *pos, struct list_head *head,
  *          - if the sublist is empty (no dependencies to new) insert new at the end
  *          - if the sublist is not empty, but new has no dependency to any other node, we can just insert new before
  *              the first node we find that has a dependency to new
+ *
+ *
+ * Case 1: No deps at all, just add it at the back
+ * new:        4
+ *                          => 1    2   3   4
+ * list: 1   2    3
+ *
+ * Case 2: new has a dependency to a node, new needs to go behind 2
+ * new:     4
+ *          |     => 1  2 <- 4   3
+ * list: 1  2   3
+ *
+ * Case 3: nodes have dependency to new, but new has no dependency to another node => just add new in front of the first dependency found
+ * new:     4
+ *        +_^
+ *       |  |       => 4 <- 1   2   3
+ * list: 1  2   3      ^--------+
+ *
+ * Case 4: nodes have dependencies between them and a dependency to new => just add new in front of the first dependency found
+ * new:     4
+ *        +-^
+ *       |              => 4 <- 1 <- 2  3
+ * list: 1 <- 2     3
+ *
+ * Case 5: like Case 3 but new has also a dependency to another node => create the sublist and insert it behind last dependency
+ * new:     4----+
+ *       +--^    |
+ *       |  |    |      => 3 <- 4 <- 1 <- 2
+ * list: 1  2   3
+ *
+ * Case 6: like case 4 but new has also a dependency to another node => transitivity check is needed and indirect dependencies need to be added to the sublist
+ * new:     4 -----+
+ *       +--^      |    => 3 <- 4 <- 1 <- 2
+ *       |         |
+ * list: 1 <- 2   3
  */
 
 static inline void list_sal_insert(struct list_head *new, struct list_head *head,
