@@ -131,6 +131,9 @@ static inline void list_sal_insert(struct list_head *new, struct list_head *head
 
     list_for_each(pos, head){
         //an element in the list must come behind new
+        if(pos == last_dep)
+            break;
+
         if(is_dependent(new, pos)){
             last_dep_to_new = pos->prev;
             list_del_rcu(pos);
