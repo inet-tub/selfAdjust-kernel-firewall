@@ -52,37 +52,79 @@ list_access_rec(struct list_head *pos, struct list_head *head,
 }
 
 //This might require a lock in kernel
+/**
+ * The basic idea is:
+ * - We go through the whole list and check for every entry if there is a dependency between the new element and the existing one
+ * - we need to consider 2 cases:
+ *  - 1. we find an element that needs to be in front of the new element
+ *      - we save a pointer to the last element we've found (last_dep) and after we finished searching the list we insert new behind this last
+ *          dependency.
+ *  - 2. we find an element that needs to be behind the new element
+ *      - we remove that element from the list and add it to a sublist (list_add_tail(new)), this means we are collecting all elements that
+ *          have a dependency to new ,and therefore need to be behind new.
+ *      - after we have searched the whole list we insert the sublist in a suitable spot
+ *          - if new needs to be behind a certain element (1.) insert the sublist behind that element
+ *              - also every node in the sublist must be checked against every other node
+ *                  - if another node has a dependency to a node in the sublist we also need to add this node
+ *          - if the sublist is empty (no dependencies to new) insert new at the end
+ *          - if the sublist is not empty, but new has no dependency to any other node, we can just insert new before
+ *              the first node we find that has a dependency to new
+ */
+
 static inline void list_sal_insert(struct list_head *new, struct list_head *head,
         int(*is_dependent)(struct list_head *a, struct list_head *b))
 {
     struct list_head *pos;
+    struct list_head *pos1;
+    struct list_head *tmp;
     struct list_head *last_dep = NULL;
     struct list_head *last_dep_next;
     struct list_head *last_dep_to_new;
     struct list_head *last;
     new->prev = new;
     new->next = new;
-    list_for_each(pos, head){
-            //an element in the list must come behind new
-            if(is_dependent(new, pos)){
-                last_dep_to_new = pos->prev;
-                list_del_rcu(pos);
-                list_add_tail(pos,new);
-                pos = last_dep_to_new;
-                continue;
-            }
-            //new must go behind and element which is already in the list
-            if(is_dependent(pos, new)){
-                last_dep = pos;
-                continue;
-            }
+
+    list_for_each(pos,head){
+        //new must go behind and element which is already in the list
+        if(is_dependent(pos, new)){
+            last_dep = pos;
+            continue;
+        }
+
     }
 
-    //we found an element where we need to insert new behind
-    //
-    // +- new -+- .. -+- last -+
-    // |____________  _________|
-    //             |  |
+
+    list_for_each(pos, head){
+        //an element in the list must come behind new
+        if(is_dependent(new, pos)){
+            last_dep_to_new = pos->prev;
+            list_del_rcu(pos);
+            list_add_tail(pos,new);
+            pos = last_dep_to_new;
+            if(!last_dep){ // we can just insert new in front of pos, because new does not need to go behind another element
+                           // we just have a 2 element sublist +- new -+- pos -+
+                break;
+            }
+
+        }else{
+            if(!list_empty(new)){ //search if we have an element in the sublist where pos has a dependency to and therefore needs also be added to the sublist
+                list_for_each(pos1, new){
+                    if(is_dependent(pos1, pos)){
+                        tmp = pos1->prev;
+                        list_del_rcu(pos1);
+                        list_add_tail(pos1,new);
+                        pos1 = tmp;
+                    }
+                }
+            }
+        }
+    }
+
+//we found an element where we need to insert new behind
+//
+// +- new -+- .. -+- last -+
+// |____________  _________|
+//             |  |
     // +- last_dep -+- last_dep_next -+
     //
     if(last_dep){
