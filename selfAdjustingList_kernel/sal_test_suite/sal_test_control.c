@@ -34,7 +34,10 @@ int main(int argc, char **argv){
         printf("Usage: sudo ./sal_test_control <GET/RESET> <TABLE NAME> <CHAIN NAME>\n");
         return -1;
     }
-    printf("this %s\n", argv[1]);
+    if(getuid()){
+        printf("execute with sudo...\n");
+        return -2;
+    }
     family = NFPROTO_IPV4;
     t = nftnl_chain_alloc();
     if(!strncmp(argv[1], "get", 3))
@@ -44,7 +47,7 @@ int main(int argc, char **argv){
         nlh = nftnl_chain_nlmsg_build_hdr(buf, NFT_MSG_RESETCHAIN, family, 0, 0);
     }else {
         printf("Unknown request %s\nSould be get or reset", argv[1]);
-        return -2;
+        return -3;
     }
 
     nftnl_chain_set_str(t, NFTNL_CHAIN_TABLE, argv[2]);
@@ -57,21 +60,24 @@ int main(int argc, char **argv){
     ret  = mnl_socket_recvfrom(nl, buf, sizeof(buf));
     if(ret > 0){
         struct req_ret *ret = (struct req_ret *)buf;
-        printf("len: %u type: %hu, flags: %hu, nlmsg_seq: %u, portid: %u\n", ret->nlh.nlmsg_len, ret->nlh.nlmsg_type, ret->nlh.nlmsg_flags, ret->nlh.nlmsg_seq, ret->nlh.nlmsg_pid);
-        printf("family %u, version %d, res_id %d\n", ret->genmsg.nfgen_family, ret->genmsg.version, ret->genmsg.res_id);
+        //printf("len: %u type: %hu, flags: %hu, nlmsg_seq: %u, portid: %u\n", ret->nlh.nlmsg_len, ret->nlh.nlmsg_type, ret->nlh.nlmsg_flags, ret->nlh.nlmsg_seq, ret->nlh.nlmsg_pid);
+        //printf("family %u, version %d, res_id %d\n", ret->genmsg.nfgen_family, ret->genmsg.version, ret->genmsg.res_id);
         switch(ret->nlh.nlmsg_type & 0x00ff) {
             case NFT_MSG_RESETCHAIN:
-                printf("len %hu type %hu %s\n", ret->attr.nla_len, ret->attr.nla_type, ret->data);
+                //printf("attr_len %hu attr_type %hu %s\n", ret->attr.nla_len, ret->attr.nla_type, ret->data);
+                printf("%s\n", ret->data);
                 break;
             case NFT_MSG_GETTRAVNODES:
-                printf("len %hu type %hu %d\n", ret->attr.nla_len, ret->attr.nla_type, ntohl(*(int *)ret->data));
+                if(ret->attr.nla_type == MNL_TYPE_U32){
+                    printf("Traversed Nodes: %u\n", ntohl(*(unsigned int *)ret->data));
+                }
+                //     printf("attr_len: %hu attr_type: %hu traversed nodes: %d\n", ret->attr.nla_len, ret->attr.nla_type, ntohl(*(int *)ret->data));
                 break;
             default:
                 printf("Unknown answer...\n");
-                return -3;
+                return -4;
         }
 
     }
-
     mnl_socket_close(nl);
 }
