@@ -42,7 +42,8 @@ static noinline void __nft_trace_packet(struct nft_traceinfo *info,
 	nft_trace_notify(info);
 }
 
-static inline void nft_trace_packet(struct nft_traceinfo *info,
+//Made this noinline to hook into it via bpf
+static noinline void nft_trace_packet(struct nft_traceinfo *info,
 				    const struct nft_chain *chain,
 				    const struct nft_rule *rule,
 				    enum nft_trace_types type)
