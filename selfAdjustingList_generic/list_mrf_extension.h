@@ -10,24 +10,30 @@
  *               reorders elements in the list after an element has been accessed
  * @pos: the element that is accessed
  * @head: the head of the list
- * @is_dependent: function which decides if two elements are dependent on each other (a is a dependecy of b)
+ * @is_dependent: function which decides if two elements are dependent on each other (a is a dependency of b)
  */
-static inline void
+static inline unsigned int
 list_access(struct list_head *pos, struct list_head *head, int(*is_dependent)(struct list_head *a, struct list_head *b))
 {
     struct list_head *cur;
-    struct list_head *prev;
-    cur = pos;
+    unsigned int swap_count = 0;
+    cur = pos->prev;
 
     while (!list_is_first(cur, head)){
-        prev = cur->prev;
-        //prev is a dependency of cur => cur is not allowed to be in front of prev
-        if(is_dependent(prev, cur)) {
-            cur = prev;
-        }else{
-            list_swap(cur, prev);
+        //cur is a dependency of pos => pos is not allowed to be in front of cur
+        //move pos behind cur and set pos to cur
+        if(is_dependent(cur, pos)) {
+            if(cur != pos->prev) {
+                list_move(pos, cur);
+                swap_count++;
+            }
+            pos = cur;
         }
+        cur = cur->prev;
     }
+
+    list_move(pos, head);
+    return swap_count;
 }
 
 static inline void
