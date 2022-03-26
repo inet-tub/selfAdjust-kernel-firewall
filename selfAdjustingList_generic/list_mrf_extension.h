@@ -17,9 +17,12 @@ list_access(struct list_head *pos, struct list_head *head, int(*is_dependent)(st
 {
     struct list_head *cur;
     unsigned int swap_count = 0;
-    cur = pos->prev;
+    if(list_is_first(pos, head))
+        return 0;
+    cur = pos;
 
     while (!list_is_first(cur, head)){
+        cur = cur->prev;
         //cur is a dependency of pos => pos is not allowed to be in front of cur
         //move pos behind cur and set pos to cur
         if(is_dependent(cur, pos)) {
@@ -29,10 +32,10 @@ list_access(struct list_head *pos, struct list_head *head, int(*is_dependent)(st
             }
             pos = cur;
         }
-        cur = cur->prev;
     }
 
     list_move(pos, head);
+    swap_count++;
     return swap_count;
 }
 
