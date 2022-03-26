@@ -239,8 +239,9 @@ void nft_construct_rule_data(struct nft_ra_info *data, struct nft_rule *rule){
     data->range[SPORT][HIGHDIM] = 0xffff;
     data->range[DPORT][LOWDIM] = 0;
     data->range[DPORT][HIGHDIM] = 0xffff;
+    //Default is all L4 Protocols are accepted
     data->range[PROTO][LOWDIM] = 0;
-    data->range[PROTO][HIGHDIM] = 0;
+    data->range[PROTO][HIGHDIM] = 0xff;
     data->priority = rule->priority;
 
   
