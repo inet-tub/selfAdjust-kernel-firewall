@@ -1300,6 +1300,13 @@ struct nft_traceinfo {
 	enum nft_trace_types		type;
 	bool				packet_dumped;
 	bool				trace;
+    //MyCode
+#ifdef CONFIG_SAL_DEBUG
+    bool enabled;
+    unsigned int swaps;
+    unsigned int trav_nodes;
+    unsigned int rule_handle;
+#endif
 };
 
 void nft_trace_init(struct nft_traceinfo *info, const struct nft_pktinfo *pkt,
@@ -1561,7 +1568,7 @@ __be64 nf_jiffies64_to_msecs(u64 input);
 #ifdef CONFIG_SAL_GENERAL
 void schedule_swap(struct nft_chain *chain, struct nft_rule *rule, bool genbit);
 void swap_front_scheduled(struct work_struct *work);
-void swap_in_place(struct nft_chain *chain,struct nft_rule *rule, bool genbit);
+//void swap_in_place(struct nft_chain *chain,struct nft_rule *rule, bool genbit);
 void free_my_rules(struct rcu_head *h);
 
 struct nft_my_work_data{

@@ -42,16 +42,21 @@ static noinline void __nft_trace_packet(struct nft_traceinfo *info,
 	nft_trace_notify(info);
 }
 
+//MyCode
 //Made this noinline to hook into it via bpf
 static noinline void nft_trace_packet(struct nft_traceinfo *info,
-				    const struct nft_chain *chain,
-				    const struct nft_rule *rule,
-				    enum nft_trace_types type)
+                                      const struct nft_chain *chain,
+                                      const struct nft_rule *rule,
+                                      enum nft_trace_types type)
 {
-	if (static_branch_unlikely(&nft_trace_enabled)) {
-		info->rule = rule;
-		__nft_trace_packet(info, chain, type);
-	}
+#ifdef CONFIG_SAL_DEBUG
+    if(info->enabled)
+        info->enabled = false;
+#endif
+    if (static_branch_unlikely(&nft_trace_enabled)) {
+        info->rule = rule;
+        __nft_trace_packet(info, chain, type);
+    }
 }
 
 static void nft_bitwise_fast_eval(const struct nft_expr *expr,
@@ -206,11 +211,12 @@ void swap_front_scheduled(struct work_struct *work){
 #endif // CONFIG_SAL_DEFER_WORK
 
 
-void swap_in_place(struct nft_chain *chain, struct nft_rule *matched_rule, bool genbit){
+static unsigned int swap_in_place(struct nft_chain *chain, struct nft_rule *matched_rule, bool genbit){
 	struct nft_rule *rule;
 	struct nft_rule **old_rules;
 	unsigned int num_of_rules;
 	int i;
+    unsigned int swaps;
 	num_of_rules = 0;
 //	printk("In: START %s\n",__FUNCTION__);
 #ifdef CONFIG_SAL_LOCKING_ENABLE
@@ -222,13 +228,13 @@ void swap_in_place(struct nft_chain *chain, struct nft_rule *matched_rule, bool 
 #ifdef CONFIG_SAL_LOCKING_ENABLE
 		spin_unlock(&chain->rules_lock);
 #endif
-		return;
+		return 0;
 	}
 	list_for_each_entry_continue(rule, &chain->rules, list) {
 		num_of_rules++;
 	}
 	
-	list_access(&matched_rule->list, &chain->rules, &rule_compare);
+	swaps = list_access(&matched_rule->list, &chain->rules, &rule_compare);
 
 	chain->rules_next = nf_tables_chain_alloc_rules(chain, num_of_rules);
 	if(!chain->rules_next){
@@ -236,7 +242,7 @@ void swap_in_place(struct nft_chain *chain, struct nft_rule *matched_rule, bool 
 #ifdef CONFIG_SAL_LOCKING_ENABLE
 		spin_unlock(&chain->rules_lock);
 #endif
-		return;
+		return 0;
 	}
 
 	i=0;
@@ -258,6 +264,7 @@ void swap_in_place(struct nft_chain *chain, struct nft_rule *matched_rule, bool 
 #ifdef CONFIG_SAL_LOCKING_ENABLE
 	spin_unlock(&chain->rules_lock);
 #endif
+    return swaps;
 }
 #endif
 
@@ -276,6 +283,11 @@ nft_do_chain(struct nft_pktinfo *pkt, void *priv)
 	struct nft_jumpstack jumpstack[NFT_JUMP_STACK_SIZE];
 	bool genbit = READ_ONCE(net->nft.gencursor);
 	struct nft_traceinfo info;
+#ifdef CONFIG_SAL_DEBUG
+    unsigned int swaps;
+    unsigned int trav_nodes = 0;
+    info.enabled = false;
+#endif
 
 	info.trace = false;
 	if (static_branch_unlikely(&nft_trace_enabled))
@@ -293,6 +305,7 @@ next_rule:
 	//MyCode
 #ifdef CONFIG_SAL_DEBUG
 		atomic_inc(&chain->traversed_rules);
+        trav_nodes++;
 #endif
 		rule = *rules;
 		nft_rule_for_each_expr(expr, last, rule) {
@@ -330,7 +343,14 @@ next_rule:
 #ifdef CONFIG_SAL_DEFER_UPDATE
 		schedule_swap(chain, rule, genbit);
 #else
-		swap_in_place(chain, rule, genbit);
+#ifdef CONFIG_SAL_DEBUG
+		swaps = swap_in_place(chain, rule, genbit);
+        info.enabled = true;
+        info.trav_nodes = trav_nodes;
+        info.swaps = swaps;
+        info.rule_handle = rule->handle;
+#endif
+        swap_in_place(chain, rule, genbit);
 #endif
 #endif
 		nft_trace_packet(&info, chain, rule,
@@ -367,6 +387,13 @@ next_rule:
 		rules = jumpstack[stackptr].rules;
 		goto next_rule;
 	}
+
+#ifdef CONFIG_SAL_DEBUG
+    info.enabled = true;
+    info.swaps = 0;
+    info.trav_nodes = trav_nodes;
+    info.rule_handle = 0;
+#endif
 
 	nft_trace_packet(&info, basechain, NULL, NFT_TRACETYPE_POLICY);
 
