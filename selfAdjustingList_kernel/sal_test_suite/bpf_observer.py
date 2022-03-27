@@ -59,19 +59,31 @@ BPF_PERF_OUTPUT(trav_rules);
     }
 """
 
-debug_print = """
-	#include <net/netfilter/nf_tables.h>
-    unsigned int kprobe__nft_do_chain(struct pt_regs *ctx, struct nft_pktinfo *pkt, void *priv) {
-        const struct nft_chain *chain = priv;
-        bpf_trace_printk("Hello World %u \\n", chain->traversed_rules);
-		return 0;
-	}
-"""
-# p = BPF(text=debug_print)
-# p.trace_print()
-# sys.exit(0)
 
-b = BPF(text=prog)
+get_statistics = """
+	#include <net/netfilter/nf_tables.h>
+	struct rule_statistic {
+		unsigned int handle;
+		unsigned int swaps;
+		unsigned int trav_nodes;
+	};
+	BPF_PERF_OUTPUT(statistics);
+	
+	void kprobe__nft_trace_packet(struct pt_regs *ctx, struct nft_traceinfo *info, const struct nft_chain *chain, const struct nft_rule *rule, enum nft_trace_types type){
+		struct rule_statistic stats;
+		if(info->enabled){
+			bpf_trace_printk("Access: %u ,Swaps: %u trav_nodes %u\\n",info->rule_handle, info->swaps, info->trav_nodes);
+			stats.handle = info->rule_handle;
+			stats.swaps = info->swaps;
+			stats.trav_nodes = info->trav_nodes;
+			statistics.perf_submit(ctx, &stats,sizeof(stats)); 
+		}
+	}
+
+"""
+
+
+
 
 def print_trav_rules(cpu, data, size):
 	out = ""
@@ -83,10 +95,39 @@ def print_trav_rules(cpu, data, size):
 	elif rule_data.ctrl == b'e':
 		out += "END\nTraversed Nodes: " + str(rule_data.a)
 	print(out.strip())
+	
+def log(cpu, data, size):
+	rule_stats = b["statistics"].event(data)
+	out = f"{rule_stats.handle}	{rule_stats.swaps}	{rule_stats.trav_nodes}\n"
+	f.write(out)
+	f.flush()
+	
 
-b["trav_rules"].open_perf_buffer(print_trav_rules)
-while 1:
-	b.perf_buffer_poll()
+def main():
+	global b
+	global f
+	args = sys.argv
+	if len(args) != 2:
+		return
+	if args[1] == "1":
+		b = BPF(text=prog)
+		b["trav_rules"].open_perf_buffer(print_trav_rules)
+	elif args[1] == '2':
+		f = open("stats.log", "a")
+		f.write("ACCESS\tSWAPS\tTRAVERSED NODES\n")
+		b = BPF(text=get_statistics)
+		b["statistics"].open_perf_buffer(log)
+	while 1:
+		b.perf_buffer_poll()
+		
+if __name__ == '__main__':
+	try:
+		main()
+	except KeyboardInterrupt:
+		if(f):
+			f.close()
+	
+
 
 # b.trace_print()
 # prio = (unsigned long *)(((char *)rule) + sizeof(struct list_head));
