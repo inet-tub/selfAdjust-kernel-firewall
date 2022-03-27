@@ -349,8 +349,9 @@ next_rule:
         info.trav_nodes = trav_nodes;
         info.swaps = swaps;
         info.rule_handle = rule->handle;
-#endif
+#else
         swap_in_place(chain, rule, genbit);
+#endif
 #endif
 #endif
 		nft_trace_packet(&info, chain, rule,
