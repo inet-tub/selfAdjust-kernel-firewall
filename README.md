@@ -40,10 +40,10 @@
 
 ### Implementation with locking
 There are 2 Versions of the update mechanism:
-    - locking and updating during rule evaluation(swap_in_place() in nf_tables_core.c)
-    - defer work (schedule_swap() in nf_tables_core.c)
-        - time of list update is not happening at the same the rule is evaluated
-    - the locking as well as the deferred work can be configured in the kernel configuration
+- locking and updating during rule evaluation(swap_in_place() in nf_tables_core.c)
+- defer work (schedule_swap() in nf_tables_core.c)
+  - time of list update is not happening at the same the rule is evaluated
+- the locking as well as the deferred work can be configured in the kernel configuration
 
 ### Evaluation:
 - generating rules and pcap traffic using [classbench](https://github.com/sebymiano/classbench-generators)
