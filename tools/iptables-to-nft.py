@@ -7,7 +7,7 @@ def main():
         print("iptables_to_nft <file from classbench_to_iptables>")
         sys.exit(1)
 
-    nft_str = "#! /usr/sbin/nft -f\nadd table filter\nadd add chain filter INPUT {type filter hook prerouting priority 0;}\n"
+    nft_str = "add table filter\nadd chain filter INPUT {type filter hook prerouting priority 0;}\n"
     with open(sys.argv[1], "r") as f:
         for line in f.readlines():
             line = line.replace("iptables", "")
