@@ -98,7 +98,7 @@ def print_trav_rules(cpu, data, size):
 	
 def log(cpu, data, size):
 	rule_stats = b["statistics"].event(data)
-	out = f"{rule_stats.handle}	{rule_stats.swaps}	{rule_stats.trav_nodes}\n"
+	out = f"{rule_stats.handle},{rule_stats.swaps},{rule_stats.trav_nodes}\n"
 	f.write(out)
 	f.flush()
 	
@@ -113,8 +113,8 @@ def main():
 		b = BPF(text=prog)
 		b["trav_rules"].open_perf_buffer(print_trav_rules)
 	elif args[1] == '2':
-		f = open("stats.log", "a")
-		f.write("ACCESS\tSWAPS\tTRAVERSED NODES\n")
+		f = open("stats.csv", "a")
+		f.write("ACCESS,SWAPS,TRAVERSED-NODES\n")
 		b = BPF(text=get_statistics)
 		b["statistics"].open_perf_buffer(log)
 	while 1:
