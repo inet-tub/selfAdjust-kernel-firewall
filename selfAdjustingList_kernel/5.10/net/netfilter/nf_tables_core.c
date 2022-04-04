@@ -224,7 +224,7 @@ static unsigned int swap_in_place(struct nft_chain *chain, struct nft_rule *matc
 #endif
 	rule = list_entry(&chain->rules, struct nft_rule, list);
 	if(list_is_first(&matched_rule->list, &rule->list)){
-		printk("Matched rule is first\n");
+		//printk("Matched rule is first\n");
 #ifdef CONFIG_SAL_LOCKING_ENABLE
 		spin_unlock(&chain->rules_lock);
 #endif

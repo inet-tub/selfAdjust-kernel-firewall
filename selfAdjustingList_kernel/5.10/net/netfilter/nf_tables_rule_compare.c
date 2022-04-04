@@ -63,7 +63,7 @@ int rule_compare(struct list_head *prev, struct list_head *matched){
 
     // a low number in the priority field is a high priority
     if(prev_rule->priority < r->priority){
-        //printk("Rule %llu is a dependecy of Rule %llu\n", (long long unsigned int)prev_rule->handle, (long long unsigned int)r->handle);
+        printk("Rule %llu is a dependecy of Rule %llu\n", (long long unsigned int)prev_rule->handle, (long long unsigned int)r->handle);
         //print_rule_info(&prev_rule->cmp_data);
         //print_rule_info(&r->cmp_data);
        return 1;
@@ -268,7 +268,6 @@ void nft_construct_rule_data(struct nft_ra_info *data, struct nft_rule *rule){
   
 
     nft_rule_for_each_expr(expr, last, rule){
-        printk("Eval rule\n");
         e = (unsigned long)expr->ops->eval;
         switch (state)
         {
