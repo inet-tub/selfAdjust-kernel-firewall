@@ -111,6 +111,8 @@ static u8 nft_ra_payload(struct nft_expr *expr, u32 *prefix_mask, int *prefix_ma
             break;
         }
         //prefixes are in network byte order
+        //certain length /8 /16 /24 of the prefeix_mask are done by only loading a certain amount of bytes from that field
+
         switch (payload->len){
             case 1:
                 *prefix_mask = 0x000000ff;
@@ -171,6 +173,13 @@ static void nft_ra_cmp(struct nft_ra_info *data, struct nft_expr *expr, u8 f, u8
         struct nft_cmp_expr *cmp = nft_expr_priv(expr);
         val = cmp->data.data[0];
         op = cmp->op;
+    }
+
+    //values don't need to be brought in host byte order, because only one byte is loaded when the field is PROTO
+    if(f == PROTO){
+        data->range[PROTO][LOWDIM] = val;
+        data->range[PROTO][HIGHDIM] = val;
+        return;
     }
 
     val = ntohl(val);
