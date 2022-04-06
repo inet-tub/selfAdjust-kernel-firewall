@@ -7,7 +7,7 @@
       - *todo redesign* 
       - *todo detect and remove transitivity in graph*
 - Only inserting rules at the end is supported
-    - *todo inserting*
+    - inserting algorithm with complexity O(n/2^2) can be found in the *sal_insert_algorithm* branch
     - *todo removing*
 
 ## Kernel Code
@@ -24,7 +24,7 @@
   
 - current restrictions of the analysis:
   - using sets in a rule is not supported
-  - examples of unsupported field entries:
+  - examples of **unsupported** field entries:
       - ip (s/d)addr {127.0.0.2, 127.0.0.125}
       - (tcp/udp) {80, 1337, 443}
     
@@ -33,7 +33,7 @@
     - setting priorities manually:
       - a patched version of the front end is needed => see tools/nftables_patches
       - new rule syntax `nft add rule <table> <chain> <rule expressions> priority <number>`
-    - setting priorites automatically
+    - setting priorities automatically
       - the rule handle (id of the rule) is used as priority
       - the priority is stored as an u64 which makes it possible to print the values in the bpf program. This is used to observe which swaps are performed.
         - bitfiels are not supported by bpf(see [Evaluation](#evaluation))
@@ -45,7 +45,7 @@ There are 2 Versions of the update mechanism:
   - time of list update is not happening at the same the rule is evaluated
 - the locking as well as the deferred work can be configured in the kernel configuration
 
-### Evaluation:
+### Evaluation
 - generating rules and pcap traffic using [classbench](https://github.com/sebymiano/classbench-generators)
   - generated packets are turned into .pcap file with `classbench-to-pcap.py`
   - generated packets are turned into rules using `classbench-to-iptables.py` which creates a set of iptable rules
@@ -57,9 +57,17 @@ There are 2 Versions of the update mechanism:
 - every chain holds a traversed_rules counter, which is an atomic_t
   - every time a rule is evaluated, the counter is increased
   - the counter and the order of rules can be reset using the sal_test_control.c program
-    - to realize this a new message type was created for the nf_tables_api
+    - to make this work, a new message type was created for the nf_tables_api
     - the exchange of data is happening over netlink
-    - the reset function will set the counter to 0 and put the order of the rules in the initial state
-  - the value of the counter and the order of the elements can be observed using the bpf_observer.py program
-    - everytime before a packet is evaluated it prints the current traversed_rule counter and the state of the list
-      - the handles of the rules are printed to identify the position of a rule
+    - the reset function will set the counter to 0 and put the order of the rules in the initial state (order them by priority)
+#### BPF observer
+- the value of the traversed nodes counter and the order of the elements can be observed using the bpf_observer.py program
+  - everytime before a packet is evaluated it prints the current traversed_rule counter and the state of the list
+    - the handles of the rules are printed to identify the position of a rule
+  - `sudo python3 bpf_observer 1` 
+
+- to record the accessed rule, the number of swaps, and the number of traversed nodes use `sudo python3 bpf_observer 2`
+  - this stores these information in a .csv file
+  - a 0 in the *accessed rule* coulmn indicates that no rule was accessed
+
+
