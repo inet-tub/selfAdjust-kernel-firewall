@@ -108,6 +108,7 @@ def main():
 	global f
 	args = sys.argv
 	if len(args) != 2:
+		print("Usage: bpf_observer PROG\nPROG can be 1 or 2\n1: hooks into nft_do_chain\n2: creates a csv file")
 		return
 	if args[1] == "1":
 		b = BPF(text=prog)
@@ -117,6 +118,9 @@ def main():
 		f.write("ACCESS,SWAPS,TRAVERSED-NODES\n")
 		b = BPF(text=get_statistics)
 		b["statistics"].open_perf_buffer(log)
+	else:
+		print("Usage: bpf_observer PROG\nPROG can be 1 or 2\n1: hooks into nft_do_chain\n2: creates a csv file")
+		sys.exit(-1)
 	while 1:
 		b.perf_buffer_poll()
 		
