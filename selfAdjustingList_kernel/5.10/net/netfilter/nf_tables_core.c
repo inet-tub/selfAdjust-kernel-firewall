@@ -189,7 +189,7 @@ static void nft_sched_access(struct nft_chain *chain, struct nft_rule *rule, boo
     spin_lock(&chain->rules_lock);
 #endif
     if(list_is_first(&rule->list, &chain->rules)){
-        printk("Matched rule is first - not scheduled\n");
+       // printk("Matched rule is first - not scheduled\n");
 #ifdef CONFIG_SAL_LOCKING_ENABLE
         spin_unlock(&chain->rules_lock);
 #endif
@@ -205,7 +205,7 @@ static void nft_sched_access(struct nft_chain *chain, struct nft_rule *rule, boo
 
     INIT_WORK(&(work->my_work), nft_sched_work);
     if(!schedule_work(&(work->my_work))){
-        printk("dropped\n");
+        printk(KERN_ALERT "nft: Rule access could not be scheduled\n");
         //printk("scheduled %u\n", work_scheduled);
     }
 }
