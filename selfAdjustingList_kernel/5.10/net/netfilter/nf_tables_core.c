@@ -173,7 +173,16 @@ static void expr_call_ops_eval(const struct nft_expr *expr,
 }
 #ifdef CONFIG_SAL_GENERAL
 #ifdef CONFIG_SAL_DEFER_UPDATE
-void schedule_swap(struct nft_chain *chain, struct nft_rule *rule, bool genbit){
+static unsigned int nft_access_rule(struct nft_chain *chain, struct nft_rule *matched_rule, bool genbit);
+static void nft_sched_work(struct work_struct *work){
+    struct nft_my_work_data *my_data;
+    my_data = container_of(work, struct nft_my_work_data, my_work);
+    nft_access_rule(my_data->chain, my_data->rule, my_data->genbit);
+
+    kfree(my_data);
+}
+
+static void nft_sched_access(struct nft_chain *chain, struct nft_rule *rule, bool genbit){
     struct nft_my_work_data *work;
 
 #ifdef CONFIG_SAL_LOCKING_ENABLE
@@ -194,24 +203,17 @@ void schedule_swap(struct nft_chain *chain, struct nft_rule *rule, bool genbit){
     work->rule = rule;
     work->genbit = genbit;
 
-    INIT_WORK(&(work->my_work), swap_front_scheduled);
+    INIT_WORK(&(work->my_work), nft_sched_work);
     if(!schedule_work(&(work->my_work))){
         printk("dropped\n");
         //printk("scheduled %u\n", work_scheduled);
     }
 }
 
-void swap_front_scheduled(struct work_struct *work){
-    struct nft_my_work_data *my_data;
-    my_data = container_of(work, struct nft_my_work_data, my_work);
-    swap_in_place(my_data->chain, my_data->rule, my_data->genbit);
-
-    kfree(my_data);
-}
 #endif // CONFIG_SAL_DEFER_WORK
 
 
-static unsigned int swap_in_place(struct nft_chain *chain, struct nft_rule *matched_rule, bool genbit){
+static unsigned int nft_access_rule(struct nft_chain *chain, struct nft_rule *matched_rule, bool genbit){
 	struct nft_rule *rule;
 	struct nft_rule **old_rules;
 	unsigned int num_of_rules;
@@ -341,16 +343,16 @@ next_rule:
 	//printk(KERN_INFO "Rule taken handle %lu\n", rule->handle);
 #ifdef CONFIG_SAL_GENERAL
 #ifdef CONFIG_SAL_DEFER_UPDATE
-		schedule_swap(chain, rule, genbit);
+		nft_sched_access(chain, rule, genbit);
 #else
 #ifdef CONFIG_SAL_DEBUG
-		swaps = swap_in_place(chain, rule, genbit);
+		swaps = nft_access_rule(chain, rule, genbit);
         info.enabled = true;
         info.trav_nodes = trav_nodes;
         info.swaps = swaps;
         info.rule_handle = rule->handle;
 #else
-        swap_in_place(chain, rule, genbit);
+        nft_access_rule(chain, rule, genbit);
 #endif
 #endif
 #endif
