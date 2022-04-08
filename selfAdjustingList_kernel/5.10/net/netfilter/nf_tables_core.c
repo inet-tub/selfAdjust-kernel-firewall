@@ -177,7 +177,13 @@ static unsigned int nft_access_rule(struct nft_chain *chain, struct nft_rule *ma
 static void nft_sched_work(struct work_struct *work){
     struct nft_my_work_data *my_data;
     my_data = container_of(work, struct nft_my_work_data, my_work);
+#ifdef CONFIG_SAL_LOCKING_ENABLE
+        spin_lock(&my_data->chain->rules_lock);
+#endif
     nft_access_rule(my_data->chain, my_data->rule, my_data->genbit);
+#ifdef CONFIG_SAL_LOCKING_ENABLE
+        spin_unlock(&my_data->chain->rules_lock);
+#endif
 
     kfree(my_data);
 }
@@ -185,19 +191,10 @@ static void nft_sched_work(struct work_struct *work){
 static void nft_sched_access(struct nft_chain *chain, struct nft_rule *rule, bool genbit){
     struct nft_my_work_data *work;
 
-#ifdef CONFIG_SAL_LOCKING_ENABLE
-    spin_lock(&chain->rules_lock);
-#endif
     if(list_is_first(&rule->list, &chain->rules)){
        // printk("Matched rule is first - not scheduled\n");
-#ifdef CONFIG_SAL_LOCKING_ENABLE
-        spin_unlock(&chain->rules_lock);
-#endif
         return;
     }
-#ifdef CONFIG_SAL_LOCKING_ENABLE
-    spin_unlock(&chain->rules_lock);
-#endif
     work = kzalloc(sizeof(struct nft_my_work_data), GFP_KERNEL);
     work->chain = chain;
     work->rule = rule;
@@ -206,7 +203,6 @@ static void nft_sched_access(struct nft_chain *chain, struct nft_rule *rule, boo
     INIT_WORK(&(work->my_work), nft_sched_work);
     if(!schedule_work(&(work->my_work))){
         printk(KERN_ALERT "nft: Rule access could not be scheduled\n");
-        //printk("scheduled %u\n", work_scheduled);
     }
 }
 
@@ -215,57 +211,25 @@ static void nft_sched_access(struct nft_chain *chain, struct nft_rule *rule, boo
 
 static unsigned int nft_access_rule(struct nft_chain *chain, struct nft_rule *matched_rule, bool genbit){
 	struct nft_rule *rule;
-	struct nft_rule **old_rules;
-	unsigned int num_of_rules;
+	struct nft_rule **rules;
 	int i;
     unsigned int swaps;
-	num_of_rules = 0;
-//	printk("In: START %s\n",__FUNCTION__);
-#ifdef CONFIG_SAL_LOCKING_ENABLE
-	spin_lock(&chain->rules_lock);
-#endif
+
 	rule = list_entry(&chain->rules, struct nft_rule, list);
 	if(list_is_first(&matched_rule->list, &rule->list)){
-		//printk("Matched rule is first\n");
-#ifdef CONFIG_SAL_LOCKING_ENABLE
-		spin_unlock(&chain->rules_lock);
-#endif
 		return 0;
 	}
-	list_for_each_entry_continue(rule, &chain->rules, list) {
-		num_of_rules++;
-	}
-	
-	swaps = list_access(&matched_rule->list, &chain->rules, &rule_compare);
+	if (genbit)
+		rules = rcu_dereference(chain->rules_gen_1);
+	else
+		rules = rcu_dereference(chain->rules_gen_0);
 
-	chain->rules_next = nf_tables_chain_alloc_rules(chain, num_of_rules);
-	if(!chain->rules_next){
-		printk("Memalloc failed\n");
-#ifdef CONFIG_SAL_LOCKING_ENABLE
-		spin_unlock(&chain->rules_lock);
-#endif
-		return 0;
-	}
+	swaps = list_access(&matched_rule->list, &chain->rules, &rule_compare);
 
 	i=0;
 	list_for_each_entry_continue(rule, &chain->rules, list) {
-		chain->rules_next[i++] = rule;
+		rules[i++] = rule;
 	}
-	chain->rules_next[i] = NULL;
-
-
-	if(genbit){
-		old_rules = rcu_dereference(chain->rules_gen_1);
-		rcu_assign_pointer(chain->rules_gen_1, chain->rules_next);
-	}else{
-		old_rules = rcu_dereference(chain->rules_gen_0);
-		rcu_assign_pointer(chain->rules_gen_0, chain->rules_next);
-	}
-    nf_tables_commit_chain_free_rules_old(old_rules);
-	chain->rules_next = NULL;
-#ifdef CONFIG_SAL_LOCKING_ENABLE
-	spin_unlock(&chain->rules_lock);
-#endif
     return swaps;
 }
 #endif
@@ -289,6 +253,9 @@ nft_do_chain(struct nft_pktinfo *pkt, void *priv)
     unsigned int swaps;
     unsigned int trav_nodes = 0;
     info.enabled = false;
+#endif
+#ifdef CONFIG_SAL_LOCKING_ENABLE
+    spin_lock(&chain->rules_lock);
 #endif
 
 	info.trace = false;
@@ -358,13 +325,20 @@ next_rule:
 #endif
 		nft_trace_packet(&info, chain, rule,
 				 NFT_TRACETYPE_RULE);
+#ifdef CONFIG_SAL_LOCKING_ENABLE
+            spin_unlock(&chain->rules_lock);
+#endif
 		return regs.verdict.code;
 	}
 
 	switch (regs.verdict.code) {
 	case NFT_JUMP:
-		if (WARN_ON_ONCE(stackptr >= NFT_JUMP_STACK_SIZE))
-			return NF_DROP;
+		if (WARN_ON_ONCE(stackptr >= NFT_JUMP_STACK_SIZE)){
+#ifdef CONFIG_SAL_LOCKING_ENABLE
+            spin_unlock(&chain->rules_lock);
+#endif
+            return NF_DROP;
+        }
 		jumpstack[stackptr].chain = chain;
 		jumpstack[stackptr].rules = rules + 1;
 		stackptr++;
@@ -403,6 +377,9 @@ next_rule:
 	if (static_branch_unlikely(&nft_counters_enabled))
 		nft_update_chain_stats(basechain, pkt);
 
+#ifdef CONFIG_SAL_LOCKING_ENABLE
+    spin_unlock(&chain->rules_lock);
+#endif
 	return nft_base_chain(basechain)->policy;
 }
 EXPORT_SYMBOL_GPL(nft_do_chain);
