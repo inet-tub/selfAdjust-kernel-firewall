@@ -1919,21 +1919,13 @@ static void nft_chain_release_hook(struct nft_chain_hook *hook)
 	module_put(hook->type->owner);
 }
 
-#ifdef CONFIG_SAL_GENERAL
-#else
 struct nft_rules_old {
     struct rcu_head h;
     struct nft_rule **start;
 };
-#endif
 
-#ifdef CONFIG_SAL_GENERAL
-struct nft_rule **nf_tables_chain_alloc_rules(const struct nft_chain *chain,
-						     unsigned int alloc)
-#else //Normal
 static struct nft_rule **nf_tables_chain_alloc_rules(const struct nft_chain *chain,
                                                      unsigned int alloc)
-#endif
 {
 	if (alloc > INT_MAX)
 		return NULL;
@@ -3346,6 +3338,7 @@ static int nf_tables_newrule(struct net *net, struct sock *nlsk,
 		info[i].ops = NULL;
 		expr = nft_expr_next(expr);
 	}
+    //MyCode
 #ifdef CONFIG_SAL_GENERAL
 	if(nla[NFTA_RULE_PRIORITY]){
         rule->priority = be32_to_cpu(nla_get_be32(nla[NFTA_RULE_PRIORITY]));
@@ -3358,28 +3351,40 @@ static int nf_tables_newrule(struct net *net, struct sock *nlsk,
 #ifdef CONFIG_SAL_MEMLESS_HELPER_STRUCT
 	nft_construct_rule_data(&rule->cmp_data, rule);
 #endif
+#ifdef CONFIG_SAL_LOCKING_ENABLE
+    spin_lock(&chain->rules_lock);
+#endif
 
 	if (nlh->nlmsg_flags & NLM_F_REPLACE) {
 		trans = nft_trans_rule_add(&ctx, NFT_MSG_NEWRULE, rule);
 		if (trans == NULL) {
 			err = -ENOMEM;
+            #ifdef CONFIG_SAL_LOCKING_ENABLE
+                spin_unlock(&chain->rules_lock);
+            #endif
 			goto err2;
 		}
 		err = nft_delrule(&ctx, old_rule);
 		if (err < 0) {
 			nft_trans_destroy(trans);
-			goto err2;
-		}
+            #ifdef CONFIG_SAL_LOCKING_ENABLE
+                spin_unlock(&chain->rules_lock);
+            #endif
+            goto err2;
+        }
 
-		list_add_tail_rcu(&rule->list, &old_rule->list);
+        list_add_tail_rcu(&rule->list, &old_rule->list);
 	} else {
 		trans = nft_trans_rule_add(&ctx, NFT_MSG_NEWRULE, rule);
 		if (!trans) {
-			err = -ENOMEM;
-			goto err2;
-		}
+            #ifdef CONFIG_SAL_LOCKING_ENABLE
+                spin_unlock(&chain->rules_lock);
+            #endif
+            err = -ENOMEM;
+            goto err2;
+        }
 
-		if (nlh->nlmsg_flags & NLM_F_APPEND) {
+        if (nlh->nlmsg_flags & NLM_F_APPEND) {
 			if (old_rule)
 				list_add_rcu(&rule->list, &old_rule->list);
 			else
@@ -3391,10 +3396,13 @@ static int nf_tables_newrule(struct net *net, struct sock *nlsk,
 				list_add_rcu(&rule->list, &chain->rules);
 		}
 	}
-	kvfree(info);
-	chain->use++;
+#ifdef CONFIG_SAL_LOCKING_ENABLE
+    spin_unlock(&chain->rules_lock);
+#endif
+    kvfree(info);
+    chain->use++;
 
-	if (net->nft.validate_state == NFT_VALIDATE_DO)
+    if (net->nft.validate_state == NFT_VALIDATE_DO)
 		return nft_table_validate(net, table);
 
 	if (chain->flags & NFT_CHAIN_HW_OFFLOAD) {
@@ -7484,10 +7492,12 @@ static int nf_tables_rule_sort(void *priv, const struct list_head *a, const stru
 }
 #endif
 
+static void nf_tables_commit_chain_free_rules_old(struct nft_rule **rules);
+
 static int nf_tables_reset_chain_rules(struct nft_chain *chain, struct net *net) {
 #ifdef CONFIG_SAL_GENERAL
     struct nft_rule *rule;
-    struct nft_rule **old_rules;
+    struct nft_rule **rules;
     unsigned int num_rules;
     int i;
     bool genbit;
@@ -7497,39 +7507,26 @@ static int nf_tables_reset_chain_rules(struct nft_chain *chain, struct net *net)
     spin_lock(&chain->rules_lock);
 #endif
     genbit = net->nft.gencursor;
+
+    if(genbit) {
+        rules = rcu_dereference(chain->rules_gen_1);
+    }else{
+        rules = rcu_dereference(chain->rules_gen_0);
+    }
     list_sort(NULL, &chain->rules, nf_tables_rule_sort);
-    rule = list_entry(&chain->rules, struct nft_rule, list);
-    list_for_each_entry_continue(rule, &chain->rules, list) {
-        num_rules++;
-    }
-    chain->rules_next = nf_tables_chain_alloc_rules(chain, num_rules);
-    if(!chain->rules_next){
-#ifdef CONFIG_SAL_LOCKING_ENABLE
-    	spin_unlock(&chain->rules_lock);
-#endif
-        return -ENOMEM;
-    }
 
     i = 0;
+    //To avoid compiler warning of uninitialized variable rule
+	rule = list_entry(&chain->rules, struct nft_rule, list);
     list_for_each_entry_continue(rule, &chain->rules, list) {
-        chain->rules_next[i++] = rule;
+        rules[i++] = rule;
     }
-    chain->rules_next[i] = NULL;
-    if(genbit) {
-        old_rules = rcu_dereference(chain->rules_gen_1);
-        rcu_assign_pointer(chain->rules_gen_1, chain->rules_next);
-    }else{
-        old_rules = rcu_dereference(chain->rules_gen_0);
-        rcu_assign_pointer(chain->rules_gen_0, chain->rules_next);
-    }
-    nf_tables_commit_chain_free_rules_old(old_rules);
-    chain->rules_next = NULL;
-#endif // CONFIG_SAL_GENERAL
-
-    atomic_set(&chain->traversed_rules, 0);
 #ifdef CONFIG_SAL_LOCKING_ENABLE
     spin_unlock(&chain->rules_lock);
 #endif
+#endif // CONFIG_SAL_GENERAL
+//if SAL_GENERAL is not enabled => the default list is used just set the traversed rules counter to 0
+    atomic_set(&chain->traversed_rules, 0);
     return 0;
 }
 
@@ -7890,18 +7887,15 @@ static int nf_tables_commit_chain_prepare(struct net *net, struct nft_chain *cha
 	struct nft_rule *rule;
 	unsigned int alloc = 0;
 	int i;
-	//MyCode
-#ifdef CONFIG_SAL_LOCKING_ENABLE
-	spin_lock(&chain->rules_lock);
-#endif
 	/* already handled or inactive chain? */
 	if (chain->rules_next || !nft_is_active_next(net, chain)){
-#ifdef CONFIG_SAL_LOCKING_ENABLE
-		spin_unlock(&chain->rules_lock);
-#endif
 		return 0;
 	}
 
+    //MyCode
+#ifdef CONFIG_SAL_LOCKING_ENABLE
+    spin_lock(&chain->rules_lock);
+#endif
 	rule = list_entry(&chain->rules, struct nft_rule, list);
 	i = 0;
 
@@ -7939,15 +7933,8 @@ static void nf_tables_commit_chain_prepare_cancel(struct net *net)
 
 		if (trans->msg_type == NFT_MSG_NEWRULE ||
 		    trans->msg_type == NFT_MSG_DELRULE) {
-		    	//MyCode
-#ifdef CONFIG_SAL_LOCKING_ENABLE
-            spin_lock(&chain->rules_lock);
-#endif
 			kvfree(chain->rules_next);
 			chain->rules_next = NULL;
-#ifdef CONFIG_SAL_LOCKING_ENABLE
-			spin_unlock(&chain->rules_lock);
-#endif
 		}
 	}
 }
@@ -7959,11 +7946,7 @@ static void __nf_tables_commit_chain_free_rules_old(struct rcu_head *h)
 	kvfree(o->start);
 }
 
-#ifdef CONFIG_SAL_GENERAL
-void nf_tables_commit_chain_free_rules_old(struct nft_rule **rules)
-#else //Normal
 static void nf_tables_commit_chain_free_rules_old(struct nft_rule **rules)
-#endif
 {
 	struct nft_rule **r = rules;
 	struct nft_rules_old *old;

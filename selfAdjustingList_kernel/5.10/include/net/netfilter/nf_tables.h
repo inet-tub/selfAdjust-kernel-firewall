@@ -859,11 +859,6 @@ int nft_expr_dump(struct sk_buff *skb, unsigned int attr,
 		  const struct nft_expr *expr);
 //MyCode
 #ifdef CONFIG_SAL_GENERAL
-//this comes from nf_tables_api.c ~Line 1900
-struct nft_rules_old {
-    struct rcu_head h;
-    struct nft_rule **start;
-};
 //struct to store the results of the bytecode analysis
 struct nft_ra_info{
 	u32 range[5][2];
@@ -1579,8 +1574,6 @@ struct nft_my_work_data{
 //compare section
 int rule_compare(struct list_head *prev, struct list_head *matched);
 void nft_construct_rule_data(struct nft_ra_info *data,struct nft_rule *rule);
-void nf_tables_commit_chain_free_rules_old(struct nft_rule **rules);
-struct nft_rule **nf_tables_chain_alloc_rules(const struct nft_chain *chain, unsigned int alloc);
 #endif
 
 #endif /* _NET_NF_TABLES_H */
