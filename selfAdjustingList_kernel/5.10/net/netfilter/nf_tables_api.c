@@ -396,16 +396,28 @@ static int nft_delrule_by_chain(struct nft_ctx *ctx)
 {
 	struct nft_rule *rule;
 	int err;
-
+//MyCode
+#ifdef CONFIG_SAL_LOCKING_ENABLE
+    spin_lock(&ctx->chain->rules_lock);
+#endif
 	list_for_each_entry(rule, &ctx->chain->rules, list) {
 		if (!nft_is_active_next(ctx->net, rule))
 			continue;
 
 		err = nft_delrule(ctx, rule);
-		if (err < 0)
-			return err;
+		if (err < 0){
+//MyCode
+#ifdef CONFIG_SAL_LOCKING_ENABLE
+            spin_unlock(&ctx->chain->rules_lock);
+#endif
+            return err;
+        }
 	}
-	return 0;
+//MyCode
+#ifdef CONFIG_SAL_LOCKING_ENABLE
+    spin_unlock(&ctx->chain->rules_lock);
+#endif
+    return 0;
 }
 
 static int nft_trans_set_add(const struct nft_ctx *ctx, int msg_type,
@@ -1672,16 +1684,9 @@ static void nf_tables_chain_free_chain_rules(struct nft_chain *chain)
 	if (g0 != g1)
 		kvfree(g1);
 	kvfree(g0);
-	//MyCode
-#ifdef CONFIG_SAL_LOCKING_ENABLE
-	spin_lock(&chain->rules_lock);
-#endif
 	/* should be NULL either via abort or via successful commit */
 	WARN_ON_ONCE(chain->rules_next);
 	kvfree(chain->rules_next);
-#ifdef CONFIG_SAL_LOCKING_ENABLE
-	spin_unlock(&chain->rules_lock);
-#endif
 }
 
 void nf_tables_chain_destroy(struct nft_ctx *ctx)
@@ -2756,14 +2761,23 @@ static struct nft_rule *__nft_rule_lookup(const struct nft_chain *chain,
 					  u64 handle)
 {
 	struct nft_rule *rule;
-
 	// FIXME: this sucks
+#ifdef CONFIG_SAL_LOCKING_ENABLE
+    spin_lock(&chain->rules_lock);
+#endif
 	list_for_each_entry_rcu(rule, &chain->rules, list) {
-		if (handle == rule->handle)
-			return rule;
-	}
+		if (handle == rule->handle){
+#ifdef CONFIG_SAL_LOCKING_ENABLE
+            spin_unlock(&chain->rules_lock);
+#endif
 
-	return ERR_PTR(-ENOENT);
+            return rule;
+        }
+	}
+#ifdef CONFIG_SAL_LOCKING_ENABLE
+    spin_unlock(&chain->rules_lock);
+#endif
+    return ERR_PTR(-ENOENT);
 }
 
 static struct nft_rule *nft_rule_lookup(const struct nft_chain *chain,
@@ -2913,6 +2927,9 @@ static int __nf_tables_dump_rules(struct sk_buff *skb,
 	unsigned int s_idx = cb->args[0];
 
 	prule = NULL;
+#ifdef CONFIG_SAL_LOCKING_ENABLE
+    spin_lock(&chain->rules_lock);
+#endif
 	list_for_each_entry_rcu(rule, &chain->rules, list) {
 		if (!nft_is_active(net, rule))
 			goto cont_skip;
@@ -2927,8 +2944,13 @@ static int __nf_tables_dump_rules(struct sk_buff *skb,
 					NFT_MSG_NEWRULE,
 					NLM_F_MULTI | NLM_F_APPEND,
 					table->family,
-					table, chain, rule, prule) < 0)
-			return 1;
+					table, chain, rule, prule) < 0){
+#ifdef CONFIG_SAL_LOCKING_ENABLE
+            spin_unlock(&chain->rules_lock);
+#endif
+            return 1;
+
+        }
 
 		nl_dump_check_consistent(cb, nlmsg_hdr(skb));
 cont:
@@ -2936,7 +2958,10 @@ cont:
 cont_skip:
 		(*idx)++;
 	}
-	return 0;
+#ifdef CONFIG_SAL_LOCKING_ENABLE
+    spin_unlock(&chain->rules_lock);
+#endif
+    return 0;
 }
 
 static int nf_tables_dump_rules(struct sk_buff *skb,
@@ -3133,8 +3158,11 @@ int nft_chain_validate(const struct nft_ctx *ctx, const struct nft_chain *chain)
 
 	if (ctx->level == NFT_JUMP_STACK_SIZE)
 		return -EMLINK;
-
-	list_for_each_entry(rule, &chain->rules, list) {
+//MyCode
+#ifdef CONFIG_SAL_LOCKING_ENABLE
+    spin_lock(&chain->rules_lock);
+#endif
+    list_for_each_entry(rule, &chain->rules, list) {
 		if (!nft_is_active_next(ctx->net, rule))
 			continue;
 
@@ -3143,12 +3171,20 @@ int nft_chain_validate(const struct nft_ctx *ctx, const struct nft_chain *chain)
 				continue;
 
 			err = expr->ops->validate(ctx, expr, &data);
-			if (err < 0)
-				return err;
+			if (err < 0) {
+                //MyCode
+#ifdef CONFIG_SAL_LOCKING_ENABLE
+                spin_unlock(&chain->rules_lock);
+#endif
+                return err;
+            }
 		}
 	}
-
-	return 0;
+//MyCode
+#ifdef CONFIG_SAL_LOCKING_ENABLE
+    spin_unlock(&chain->rules_lock);
+#endif
+    return 0;
 }
 EXPORT_SYMBOL_GPL(nft_chain_validate);
 
@@ -5562,9 +5598,15 @@ void nft_data_hold(const struct nft_data *data, enum nft_data_types type)
 				break;
 
 			chain->table->use++;
+#ifdef CONFIG_SAL_LOCKING_ENABLE
+                spin_lock(&chain->rules_lock);
+#endif
 			list_for_each_entry(rule, &chain->rules, list)
 				chain->use++;
 
+#ifdef CONFIG_SAL_LOCKING_ENABLE
+                spin_unlock(&chain->rules_lock);
+#endif
 			nft_chain_add(chain->table, chain);
 			break;
 		}
@@ -9096,11 +9138,17 @@ int __nft_release_basechain(struct nft_ctx *ctx)
 		return 0;
 
 	nf_tables_unregister_hook(ctx->net, ctx->chain->table, ctx->chain);
+#ifdef CONFIG_SAL_LOCKING_ENABLE
+    spin_lock(&ctx->chain->rules_lock);
+#endif
 	list_for_each_entry_safe(rule, nr, &ctx->chain->rules, list) {
 		list_del(&rule->list);
 		ctx->chain->use--;
 		nf_tables_rule_release(ctx, rule);
 	}
+#ifdef CONFIG_SAL_LOCKING_ENABLE
+    spin_unlock(&ctx->chain->rules_lock);
+#endif
 	nft_chain_del(ctx->chain);
 	ctx->table->use--;
 	nf_tables_chain_destroy(ctx);
@@ -9138,11 +9186,19 @@ static void __nft_release_tables(struct net *net)
 		ctx.table = table;
 		list_for_each_entry(chain, &table->chains, list) {
 			ctx.chain = chain;
+            //MyCode
+#ifdef CONFIG_SAL_LOCKING_ENABLE
+            spin_lock(&chain->rules_lock);
+#endif
 			list_for_each_entry_safe(rule, nr, &chain->rules, list) {
 				list_del(&rule->list);
 				chain->use--;
 				nf_tables_rule_release(&ctx, rule);
 			}
+            //MyCode
+#ifdef CONFIG_SAL_LOCKING_ENABLE
+            spin_unlock(&chain->rules_lock);
+#endif
 		}
 		list_for_each_entry_safe(flowtable, nf, &table->flowtables, list) {
 			list_del(&flowtable->list);
