@@ -3,11 +3,16 @@ import subprocess
 import sys
 
 def main():
-    if len(sys.argv) != 3:
-        print("iptables_to_nft <file from classbench_to_iptables> <outputfile>")
+    if len(sys.argv) != 4:
+        print("iptables_to_nft <file from classbench_to_iptables> <outputfile> <hook>")
         sys.exit(1)
 
-    nft_str = "add table filter\nadd chain filter INPUT {type filter hook prerouting priority 0;}\n"
+    hooks = ["ingress", "prerouting", "input", "forward", "output", "postrouting"]
+    if sys.argv[3] not in hooks:
+        print("Invalid hook")
+        sys.exit(1)
+        
+    nft_str = "add table filter\nadd chain filter INPUT {type filter hook "+sys.argv[3]+" priority 0;}\n"
     with open(sys.argv[1], "r") as f:
         for line in f.readlines():
             line = line.replace("iptables", "")
