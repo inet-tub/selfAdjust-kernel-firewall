@@ -975,7 +975,7 @@ struct nft_chain {
 	atomic_t 	traversed_rules;
 #endif
 #ifdef CONFIG_SAL_LOCKING_ENABLE
-	spinlock_t rules_lock;
+	struct mutex rules_lock;
 #endif
 	/* Only used during control plane commit phase: */
 	struct nft_rule			**rules_next;
@@ -1574,6 +1574,12 @@ struct nft_my_work_data{
 //compare section
 int rule_compare(struct list_head *prev, struct list_head *matched);
 void nft_construct_rule_data(struct nft_ra_info *data,struct nft_rule *rule);
+struct nft_rules_old {
+    struct rcu_head h;
+    struct nft_rule **start;
+};
+void nf_tables_commit_chain_free_rules_old(struct nft_rule **rules);
+struct nft_rule **nf_tables_chain_alloc_rules(const struct nft_chain *chain, unsigned int alloc);
 #endif
 
 #endif /* _NET_NF_TABLES_H */
