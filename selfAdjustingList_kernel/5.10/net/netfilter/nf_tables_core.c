@@ -178,7 +178,7 @@ static unsigned int nft_access_rule(struct nft_chain *chain, struct nft_rule *ma
 //this could lead to dereferencing invalid pointers
 static void nft_sched_work(struct work_struct *work){
     struct nft_my_work_data *my_data;
-    printk("Accessing rule\n");
+    //printk("Accessing rule\n");
     my_data = container_of(work, struct nft_my_work_data, my_work);
 #ifdef CONFIG_SAL_LOCKING_ENABLE
         mutex_lock(&my_data->chain->rules_lock);
