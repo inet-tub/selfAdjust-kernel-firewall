@@ -204,7 +204,8 @@ static void nft_sched_access(struct nft_chain *chain, struct nft_rule *rule, boo
     work->genbit = genbit;
 
     INIT_WORK(&(work->my_work), nft_sched_work);
-    if(!schedule_work(&(work->my_work))){
+    //TODO smarter way on which CPU to put the work struct on
+    if(!schedule_work_on(0, &(work->my_work))){
         printk(KERN_ALERT "nft: Rule access could not be scheduled\n");
     }
 }
