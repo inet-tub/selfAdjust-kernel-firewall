@@ -191,13 +191,12 @@ static void nft_sched_work(struct work_struct *work){
     kfree(my_data);
 }
 
-static void nft_sched_access(struct nft_chain *chain, struct nft_rule *rule, bool genbit){
+static void nft_sched_access(struct nft_chain *chain, struct nft_rule *rule, bool genbit, unsigned int trav_nodes){
     struct nft_my_work_data *work;
 
-    if(list_is_first(&rule->list, &chain->rules)){
-       // printk("Matched rule is first - not scheduled\n");
+    if(trav_nodes == 1)
         return;
-    }
+
     work = kzalloc(sizeof(struct nft_my_work_data), GFP_KERNEL);
     work->chain = chain;
     work->rule = rule;
@@ -275,9 +274,9 @@ nft_do_chain(struct nft_pktinfo *pkt, void *priv)
 	struct nft_traceinfo info;
 #ifdef CONFIG_SAL_DEBUG
     unsigned int swaps;
-    unsigned int trav_nodes = 0;
     info.enabled = false;
 #endif
+    unsigned int trav_nodes = 0;
 
 	info.trace = false;
 	if (static_branch_unlikely(&nft_trace_enabled))
@@ -331,7 +330,7 @@ next_rule:
 	//printk(KERN_INFO "Rule taken handle %lu\n", rule->handle);
 #ifdef CONFIG_SAL_GENERAL
 #ifdef CONFIG_SAL_DEFER_UPDATE
-		nft_sched_access(chain, rule, genbit);
+		nft_sched_access(chain, rule, genbit, trav_nodes);
 #else
 #ifdef CONFIG_SAL_DEBUG
 		swaps = nft_access_rule(chain, rule, genbit);
