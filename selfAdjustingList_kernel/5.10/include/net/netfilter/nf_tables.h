@@ -977,6 +977,9 @@ struct nft_chain {
 #ifdef CONFIG_SAL_LOCKING_ENABLE
 	spinlock_t rules_lock;
 #endif
+#ifdef CONFIG_SAL_GENERAL
+    u32 hook_num;
+#endif
 	/* Only used during control plane commit phase: */
 	struct nft_rule			**rules_next;
 };
