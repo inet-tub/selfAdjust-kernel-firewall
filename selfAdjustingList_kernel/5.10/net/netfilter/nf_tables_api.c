@@ -8119,11 +8119,22 @@ static void nft_obj_del(struct nft_object *obj)
 
 void nft_chain_del(struct nft_chain *chain)
 {
+
+    int i;
 	struct nft_table *table = chain->table;
 
 	WARN_ON_ONCE(rhltable_remove(&table->chains_ht, &chain->rhlhead,
 				     nft_chain_ht_params));
-	list_del_rcu(&chain->list);
+
+    i=0;
+    for_each_possible_cpu(i) {
+        struct softnet_data *sd = &per_cpu(softnet_data, i);
+        if(sd->rules[chain->hook_num]) {
+            kfree(sd->rules[chain->hook_num]);
+            sd->rules[chain->hook_num] = NULL;
+        }
+    }
+        list_del_rcu(&chain->list);
 }
 
 static void nft_flowtable_hooks_del(struct nft_flowtable *flowtable,
