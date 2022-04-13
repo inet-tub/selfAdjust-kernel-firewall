@@ -63,7 +63,7 @@ int rule_compare(struct list_head *prev, struct list_head *matched){
 
     // a low number in the priority field is a high priority
     if(prev_rule->priority < r->priority){
-        //printk("Rule %llu is a dependecy of Rule %llu\n", (long long unsigned int)prev_rule->handle, (long long unsigned int)r->handle);
+        printk("Rule %llu is a dependecy of Rule %llu\n", (long long unsigned int)prev_rule->handle, (long long unsigned int)r->handle);
         //print_rule_info(&prev_rule->cmp_data);
         //print_rule_info(&r->cmp_data);
        return 1;

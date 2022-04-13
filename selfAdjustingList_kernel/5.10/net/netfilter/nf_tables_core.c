@@ -172,65 +172,26 @@ static void expr_call_ops_eval(const struct nft_expr *expr,
 	expr->ops->eval(expr, regs, pkt);
 }
 #ifdef CONFIG_SAL_GENERAL
-#ifdef CONFIG_SAL_DEFER_UPDATE
-static unsigned int nft_access_rule(struct nft_chain *chain, struct nft_rule *matched_rule, bool genbit);
-static void nft_sched_work(struct work_struct *work){
-    struct nft_my_work_data *my_data;
-    my_data = container_of(work, struct nft_my_work_data, my_work);
-#ifdef CONFIG_SAL_LOCKING_ENABLE
-        spin_lock(&my_data->chain->rules_lock);
-#endif
-    nft_access_rule(my_data->chain, my_data->rule, my_data->genbit);
-#ifdef CONFIG_SAL_LOCKING_ENABLE
-        spin_unlock(&my_data->chain->rules_lock);
-#endif
 
-    kfree(my_data);
-}
+static unsigned int nft_access_rule(struct nft_rule **rules, struct nft_rule *matched_rule, u32 idx){
+    int swap_count = 0;
+    struct nft_rule *tmp;
+    //is first
+    if(idx == 0)
+        return 0;
 
-static void nft_sched_access(struct nft_chain *chain, struct nft_rule *rule, bool genbit){
-    struct nft_my_work_data *work;
-
-    if(list_is_first(&rule->list, &chain->rules)){
-       // printk("Matched rule is first - not scheduled\n");
-        return;
+    while(idx != 0){
+        if(rule_compare(&rules[idx-1]->list, &rules[idx]->list)){
+            swap_count++;
+        }else{
+            tmp = rules[idx-1];
+            rules[idx-1] = rules[idx];
+            rules[idx] = tmp;
+        }
+        idx -= 1;
     }
-    work = kzalloc(sizeof(struct nft_my_work_data), GFP_KERNEL);
-    work->chain = chain;
-    work->rule = rule;
-    work->genbit = genbit;
+    return swap_count;
 
-    INIT_WORK(&(work->my_work), nft_sched_work);
-    if(!schedule_work(&(work->my_work))){
-        printk(KERN_ALERT "nft: Rule access could not be scheduled\n");
-    }
-}
-
-#endif // CONFIG_SAL_DEFER_WORK
-
-
-static unsigned int nft_access_rule(struct nft_chain *chain, struct nft_rule *matched_rule, bool genbit){
-	struct nft_rule *rule;
-	struct nft_rule **rules;
-	int i;
-    unsigned int swaps;
-
-	rule = list_entry(&chain->rules, struct nft_rule, list);
-	if(list_is_first(&matched_rule->list, &rule->list)){
-		return 0;
-	}
-	if (genbit)
-		rules = rcu_dereference(chain->rules_gen_1);
-	else
-		rules = rcu_dereference(chain->rules_gen_0);
-
-	swaps = list_access(&matched_rule->list, &chain->rules, &rule_compare);
-
-	i=0;
-	list_for_each_entry_continue(rule, &chain->rules, list) {
-		rules[i++] = rule;
-	}
-    return swaps;
 }
 #endif
 
@@ -248,10 +209,12 @@ nft_do_chain(struct nft_pktinfo *pkt, void *priv)
 	unsigned int stackptr = 0;
 	struct nft_jumpstack jumpstack[NFT_JUMP_STACK_SIZE];
 	bool genbit = READ_ONCE(net->nft.gencursor);
+    u32 idx = 0;
 	struct nft_traceinfo info;
 #ifdef CONFIG_SAL_GENERAL
     int cpu = smp_processor_id();
     struct softnet_data *sd;
+    struct nft_rule **rules_backup;
 #endif
 #ifdef CONFIG_SAL_DEBUG
     unsigned int swaps;
@@ -272,6 +235,7 @@ do_chain:
     printk("sd: %p\n", sd); //0: prerouting 1: Input 2: forward 3: output 4: postrouting
 
     rules = rcu_dereference(sd->rules[pkt->xt.state->hook]);
+    rules_backup = rules;
     printk("rules: %p\n", sd->rules[pkt->xt.state->hook]); //0: prerouting 1: Input 2: forward 3: output 4: postrouting
     if(rules == NULL)
         return 0;
@@ -285,7 +249,7 @@ do_chain:
 next_rule:
 	rule = *rules;
 	regs.verdict.code = NFT_CONTINUE;
-	for (; *rules ; rules++) {
+	for (; *rules ; rules++, ++idx) {
 	//MyCode
 #ifdef CONFIG_SAL_DEBUG
 		atomic_inc(&chain->traversed_rules);
@@ -325,18 +289,16 @@ next_rule:
 	case NF_STOLEN:
 	//printk(KERN_INFO "Rule taken handle %lu\n", rule->handle);
 #ifdef CONFIG_SAL_GENERAL
-#ifdef CONFIG_SAL_DEFER_UPDATE
-		nft_sched_access(chain, rule, genbit);
-#else
 #ifdef CONFIG_SAL_DEBUG
 		/*swaps = nft_access_rule(chain, rule, genbit);
         info.enabled = true;
         info.trav_nodes = trav_nodes;
         info.swaps = swaps;
         info.rule_handle = rule->handle;*/
+        printk("Accessed rule %u on idx %u\n", rule->priority, idx);
+        nft_access_rule(rules_backup, rule, idx);
 #else
-        nft_access_rule(chain, rule, genbit);
-#endif
+        nft_access_rule(rules_backup, rule, idx);
 #endif
 #endif
 		nft_trace_packet(&info, chain, rule,
