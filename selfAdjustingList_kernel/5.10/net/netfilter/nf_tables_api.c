@@ -2017,12 +2017,12 @@ static int nf_tables_addchain(struct nft_ctx *ctx, u8 family, u8 genmask,
 	struct nft_chain *chain;
 	struct nft_rule **rules;
 	int err;
+    struct nft_chain_hook hook;
 
 	if (table->use == UINT_MAX)
 		return -EOVERFLOW;
 
 	if (nla[NFTA_CHAIN_HOOK]) {
-		struct nft_chain_hook hook;
 
 		if (flags & NFT_CHAIN_BINDING)
 			return -EOPNOTSUPP;
@@ -2031,6 +2031,17 @@ static int nf_tables_addchain(struct nft_ctx *ctx, u8 family, u8 genmask,
 		if (err < 0)
 			return err;
 
+#ifdef CONFIG_SAL_GENERAL
+        struct softnet_data *sd = &per_cpu(softnet_data, smp_processor_id());	//int cpu = smp_processor_id();;
+        if(!sd){
+            printk("SOMETHING WENT SERIOUSLY WRONG!\n");
+            return -EINVAL;
+        }
+        if(sd->rules[hook.num] != NULL){
+            printk(KERN_ALERT "Cannot add another chain in this hook!\n");
+            return -EINVAL;
+        }
+#endif
 		basechain = kzalloc(sizeof(*basechain), GFP_KERNEL);
 		if (basechain == NULL) {
 			nft_chain_release_hook(&hook);
@@ -2081,8 +2092,11 @@ static int nf_tables_addchain(struct nft_ctx *ctx, u8 family, u8 genmask,
 #ifdef CONFIG_SAL_DEBUG
 	atomic_set(&chain->traversed_rules, 0);
 #endif
+#ifdef CONFIG_SAL_GENERAL
+    chain->hook_num = hook.num;
+#endif
 
-	if (nla[NFTA_CHAIN_NAME]) {
+    if (nla[NFTA_CHAIN_NAME]) {
 		chain->name = nla_strdup(nla[NFTA_CHAIN_NAME], GFP_KERNEL);
 	} else {
 		if (!(flags & NFT_CHAIN_BINDING)) {
@@ -7929,6 +7943,9 @@ static int nf_tables_commit_chain_prepare(struct net *net, struct nft_chain *cha
 	struct nft_rule *rule;
 	unsigned int alloc = 0;
 	int i;
+#ifdef CONFIG_SAL_GENERAL
+    int j;
+#endif
 	/* already handled or inactive chain? */
 	if (chain->rules_next || !nft_is_active_next(net, chain)){
 		return 0;
@@ -7960,6 +7977,31 @@ static int nf_tables_commit_chain_prepare(struct net *net, struct nft_chain *cha
 	}
 
 	chain->rules_next[i] = NULL;
+#ifdef CONFIG_SAL_GENERAL
+    i=0;
+    for_each_possible_cpu(i) {
+        struct softnet_data *sd = &per_cpu(softnet_data, i);
+        sd->rules[chain->hook_num] = kzalloc((alloc+1)*sizeof(struct nft_rule *), GFP_KERNEL);
+        if(!sd->rules[chain->hook_num]){
+            return -ENOMEM;
+        }
+        j=0;
+	    rule = list_entry(&chain->rules, struct nft_rule, list);
+        list_for_each_entry_continue(rule, &chain->rules, list) {
+            sd->rules[chain->hook_num][j++] = rule;
+        }
+        sd->rules[chain->hook_num][j] = NULL;
+        j=0;
+        struct nft_rule **rula = sd->rules[chain->hook_num];
+        struct nft_rule *r;
+        r = *rula;
+        while(*rula){
+            r = *rula;
+            printk("On: %d rule: %u\n",i, r->priority);
+            rula++;
+            }
+    }
+#endif
 #ifdef CONFIG_SAL_LOCKING_ENABLE
     spin_unlock(&chain->rules_lock);
 #endif
