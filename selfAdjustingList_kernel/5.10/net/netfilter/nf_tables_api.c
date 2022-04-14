@@ -5612,15 +5612,9 @@ void nft_data_hold(const struct nft_data *data, enum nft_data_types type)
 				break;
 
 			chain->table->use++;
-#ifdef CONFIG_SAL_LOCKING_ENABLE
-                spin_lock(&chain->rules_lock);
-#endif
 			list_for_each_entry(rule, &chain->rules, list)
 				chain->use++;
 
-#ifdef CONFIG_SAL_LOCKING_ENABLE
-                spin_unlock(&chain->rules_lock);
-#endif
 			nft_chain_add(chain->table, chain);
 			break;
 		}
@@ -7558,10 +7552,6 @@ static int nf_tables_reset_chain_rules(struct nft_chain *chain, struct net *net)
     int i;
     bool genbit;
     num_rules = 0;
-    //MyCode
-#ifdef CONFIG_SAL_LOCKING_ENABLE
-    spin_lock(&chain->rules_lock);
-#endif
     genbit = net->nft.gencursor;
 
     if(genbit) {
@@ -7577,9 +7567,6 @@ static int nf_tables_reset_chain_rules(struct nft_chain *chain, struct net *net)
     list_for_each_entry_continue(rule, &chain->rules, list) {
         rules[i++] = rule;
     }
-#ifdef CONFIG_SAL_LOCKING_ENABLE
-    spin_unlock(&chain->rules_lock);
-#endif
 #endif // CONFIG_SAL_GENERAL
 //if SAL_GENERAL is not enabled => the default list is used just set the traversed rules counter to 0
     atomic_set(&chain->traversed_rules, 0);
@@ -7945,6 +7932,8 @@ static int nf_tables_commit_chain_prepare(struct net *net, struct nft_chain *cha
 	int i;
 #ifdef CONFIG_SAL_GENERAL
     int j;
+    struct nft_rule **new_rules;
+    struct nft_rule **old_rules;
 #endif
 	/* already handled or inactive chain? */
 	if (chain->rules_next || !nft_is_active_next(net, chain)){
@@ -7981,16 +7970,25 @@ static int nf_tables_commit_chain_prepare(struct net *net, struct nft_chain *cha
     i=0;
     for_each_possible_cpu(i) {
         struct softnet_data *sd = &per_cpu(softnet_data, i);
-        sd->rules[chain->hook_num] = kzalloc((alloc+1)*sizeof(struct nft_rule *), GFP_KERNEL);
-        if(!sd->rules[chain->hook_num]){
+        new_rules = kzalloc((alloc+1)*sizeof(struct nft_rule *), GFP_KERNEL);
+        if(!new_rules){
             return -ENOMEM;
         }
         j=0;
 	    rule = list_entry(&chain->rules, struct nft_rule, list);
         list_for_each_entry_continue(rule, &chain->rules, list) {
-            sd->rules[chain->hook_num][j++] = rule;
+            new_rules[j++] = rule;
         }
-        sd->rules[chain->hook_num][j] = NULL;
+        new_rules[j] = NULL;
+        if(sd->rules[chain->hook_num]){
+            old_rules = sd->rules[chain->hook_num];
+            rcu_assign_pointer(sd->rules[chain->hook_num], new_rules);
+            synchronize_rcu();
+            kfree(old_rules);
+        }else{
+            rcu_assign_pointer(sd->rules[chain->hook_num], new_rules);
+        }
+        //DEBUG
         j=0;
         struct nft_rule **rula = sd->rules[chain->hook_num];
         struct nft_rule *r;
@@ -7999,7 +7997,8 @@ static int nf_tables_commit_chain_prepare(struct net *net, struct nft_chain *cha
             r = *rula;
             printk("On: %d rule: %u\n",i, r->priority);
             rula++;
-            }
+        }
+        //END DEBUG
     }
 #endif
 #ifdef CONFIG_SAL_LOCKING_ENABLE
