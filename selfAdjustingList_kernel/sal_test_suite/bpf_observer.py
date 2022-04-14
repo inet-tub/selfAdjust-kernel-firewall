@@ -66,6 +66,7 @@ get_statistics = """
 		unsigned int handle;
 		unsigned int swaps;
 		unsigned int trav_nodes;
+		unsigned int cpu;
 	};
 	BPF_PERF_OUTPUT(statistics);
 	
@@ -76,6 +77,7 @@ get_statistics = """
 			stats.handle = info->rule_handle;
 			stats.swaps = info->swaps;
 			stats.trav_nodes = info->trav_nodes;
+			stats.cpu = info->cpu;
 			statistics.perf_submit(ctx, &stats,sizeof(stats)); 
 		}
 	}
@@ -98,7 +100,7 @@ def print_trav_rules(cpu, data, size):
 	
 def log(cpu, data, size):
 	rule_stats = b["statistics"].event(data)
-	out = f"{rule_stats.handle},{rule_stats.swaps},{rule_stats.trav_nodes}\n"
+	out = f"{rule_stats.handle},{rule_stats.swaps},{rule_stats.trav_nodes},{rule_stats.cpu}\n"
 	f.write(out)
 	f.flush()
 	
@@ -115,7 +117,7 @@ def main():
 		b["trav_rules"].open_perf_buffer(print_trav_rules)
 	elif args[1] == '2':
 		f = open("stats.csv", "a")
-		f.write("ACCESS,SWAPS,TRAVERSED-NODES\n")
+		f.write("ACCESS,SWAPS,TRAVERSED-NODES,CPU\n")
 		b = BPF(text=get_statistics)
 		b["statistics"].open_perf_buffer(log)
 	else:

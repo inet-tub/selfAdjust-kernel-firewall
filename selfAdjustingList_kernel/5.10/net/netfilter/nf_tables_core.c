@@ -201,7 +201,7 @@ nft_do_chain(struct nft_pktinfo *pkt, void *priv)
     //MyCode - remove const
 	struct nft_chain *chain = priv, *basechain = chain;
 	const struct net *net = nft_net(pkt);
-	struct nft_rule *const *rules;
+	struct nft_rule **rules;
     //MyCode - removed const
 	struct nft_rule *rule;
 	const struct nft_expr *expr, *last;
@@ -290,13 +290,13 @@ next_rule:
 	//printk(KERN_INFO "Rule taken handle %lu\n", rule->handle);
 #ifdef CONFIG_SAL_GENERAL
 #ifdef CONFIG_SAL_DEBUG
-		/*swaps = nft_access_rule(chain, rule, genbit);
+        printk("Accessed rule %u on idx %u\n", rule->priority, idx);
+        swaps = nft_access_rule(rules_backup, rule, idx);
         info.enabled = true;
         info.trav_nodes = trav_nodes;
         info.swaps = swaps;
-        info.rule_handle = rule->handle;*/
-        printk("Accessed rule %u on idx %u\n", rule->priority, idx);
-        nft_access_rule(rules_backup, rule, idx);
+        info.rule_handle = rule->handle;
+        info.cpu = cpu;
 #else
         nft_access_rule(rules_backup, rule, idx);
 #endif

@@ -1300,10 +1300,12 @@ struct nft_traceinfo {
 	bool				trace;
     //MyCode
 #ifdef CONFIG_SAL_DEBUG
+    //enabled - this is used for the bpf observer to indicate that this struct contains data that needs to be observed
     bool enabled;
     unsigned int swaps;
     unsigned int trav_nodes;
     unsigned int rule_handle;
+    unsigned int cpu;
 #endif
 };
 
