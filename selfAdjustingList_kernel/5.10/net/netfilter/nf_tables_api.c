@@ -2020,7 +2020,7 @@ static int nf_tables_addchain(struct nft_ctx *ctx, u8 family, u8 genmask,
 			return err;
 
 #ifdef CONFIG_SAL_GENERAL
-        struct softnet_data *sd = &per_cpu(softnet_data, smp_processor_id());	//int cpu = smp_processor_id();;
+        struct softnet_data *sd = &per_cpu(softnet_data, smp_processor_id());
         if(!sd){
             printk("SOMETHING WENT SERIOUSLY WRONG!\n");
             return -EINVAL;
