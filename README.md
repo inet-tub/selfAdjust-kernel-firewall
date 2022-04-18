@@ -71,3 +71,4 @@ There are 2 Versions of the update mechanism:
   - a 0 in the *accessed rule* coulmn indicates that no rule was accessed
 
 
+
