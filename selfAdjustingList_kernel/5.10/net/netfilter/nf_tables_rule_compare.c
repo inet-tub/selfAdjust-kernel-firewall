@@ -104,7 +104,7 @@ static u8 nft_ra_payload(struct nft_expr *expr, u32 *prefix_mask, int *prefix_ma
             break;
         case RULE_CMP_PROTOCOL:
             ret = PROTO;
-            break;
+            return ret;
         default:
             BUG();
             ret = UNKNOWN;
