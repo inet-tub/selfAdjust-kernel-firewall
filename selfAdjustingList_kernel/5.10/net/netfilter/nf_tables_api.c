@@ -8034,6 +8034,7 @@ void nft_chain_del(struct nft_chain *chain)
 	WARN_ON_ONCE(rhltable_remove(&table->chains_ht, &chain->rhlhead,
 				     nft_chain_ht_params));
 
+#ifdef CONFIG_SAL_GENERAL
     i=0;
     for_each_possible_cpu(i) {
         struct softnet_data *sd = &per_cpu(softnet_data, i);
@@ -8042,6 +8043,7 @@ void nft_chain_del(struct nft_chain *chain)
             sd->rules[chain->hook_num] = NULL;
         }
     }
+#endif
         list_del_rcu(&chain->list);
 }
 

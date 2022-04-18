@@ -226,17 +226,17 @@ nft_do_chain(struct nft_pktinfo *pkt, void *priv)
 		nft_trace_init(&info, pkt, &regs.verdict, basechain);
 do_chain:
 #ifdef CONFIG_SAL_GENERAL
-    printk("Hooknum: %u\n", pkt->xt.state->hook); //0: prerouting 1: Input 2: forward 3: output 4: postrouting
+    //printk("Hooknum: %u\n", pkt->xt.state->hook); //0: prerouting 1: Input 2: forward 3: output 4: postrouting
     if(pkt->xt.state->hook < 0 || pkt->xt.state->hook > 4){
         printk("Invalid hook\n");
         return 0;
     }
     sd = &per_cpu(softnet_data, cpu);
-    printk("sd: %p\n", sd); //0: prerouting 1: Input 2: forward 3: output 4: postrouting
+    //printk("sd: %p\n", sd); //0: prerouting 1: Input 2: forward 3: output 4: postrouting
 
     rules = rcu_dereference(sd->rules[pkt->xt.state->hook]);
     rules_backup = rules;
-    printk("rules: %p\n", sd->rules[pkt->xt.state->hook]); //0: prerouting 1: Input 2: forward 3: output 4: postrouting
+    //printk("rules: %p\n", sd->rules[pkt->xt.state->hook]); //0: prerouting 1: Input 2: forward 3: output 4: postrouting
     if(rules == NULL)
         return 0;
 #else
@@ -256,7 +256,7 @@ next_rule:
         trav_nodes++;
 #endif
 		rule = *rules;
-        printk("On: %u, eval: %u\n",cpu, rule->priority );
+        //printk("On: %u, eval: %u\n",cpu, rule->priority );
 		nft_rule_for_each_expr(expr, last, rule) {
 			if (expr->ops == &nft_cmp_fast_ops)
 				nft_cmp_fast_eval(expr, &regs);
@@ -290,7 +290,7 @@ next_rule:
 	//printk(KERN_INFO "Rule taken handle %lu\n", rule->handle);
 #ifdef CONFIG_SAL_GENERAL
 #ifdef CONFIG_SAL_DEBUG
-        printk("Accessed rule %u on idx %u\n", rule->priority, idx);
+        //printk("Accessed rule %u on idx %u\n", rule->priority, idx);
         swaps = nft_access_rule(rules_backup, rule, idx);
         info.enabled = true;
         info.trav_nodes = trav_nodes;
