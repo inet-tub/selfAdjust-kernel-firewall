@@ -307,20 +307,24 @@ next_rule:
 	case NF_DROP:
 	case NF_QUEUE:
 	case NF_STOLEN:
-	//printk(KERN_INFO "Rule taken handle %lu\n", rule->handle);
 #ifdef CONFIG_SAL_GENERAL
-#ifdef CONFIG_SAL_DEFER_UPDATE
-		nft_sched_access(chain, rule, genbit);
-#else
 #ifdef CONFIG_SAL_DEBUG
 		swaps = nft_access_rule(chain, rule, genbit);
         info.enabled = true;
         info.trav_nodes = trav_nodes;
         info.swaps = swaps;
         info.rule_handle = rule->handle;
+        info.cpu = smp_processor_id();
 #else
         nft_access_rule(chain, rule, genbit);
 #endif
+#else
+#ifdef CONFIG_SAL_DEBUG
+        info.enabled = true;
+        info.trav_nodes = trav_nodes;
+        info.swaps = 0;
+        info.rule_handle = rule->handle;
+        info.cpu = smp_processor_id();
 #endif
 #endif
 		nft_trace_packet(&info, chain, rule,

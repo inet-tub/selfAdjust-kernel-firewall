@@ -1301,6 +1301,7 @@ struct nft_traceinfo {
     unsigned int swaps;
     unsigned int trav_nodes;
     unsigned int rule_handle;
+    unsigned int cpu;
 #endif
 };
 
