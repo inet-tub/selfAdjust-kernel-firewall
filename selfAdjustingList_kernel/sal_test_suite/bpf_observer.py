@@ -62,22 +62,48 @@ BPF_PERF_OUTPUT(trav_rules);
 
 get_statistics = """
 	#include <net/netfilter/nf_tables.h>
+
+    struct time_t {
+        u64 time_ns;
+        u64 pid;
+    };
+
 	struct rule_statistic {
 		unsigned int handle;
 		unsigned int swaps;
 		unsigned int trav_nodes;
 		unsigned int cpu;
+        u64 time_ns;
 	};
 	BPF_PERF_OUTPUT(statistics);
-	
-	void kprobe__nft_trace_packet(struct pt_regs *ctx, struct nft_traceinfo *info, const struct nft_chain *chain, const struct nft_rule *rule, enum nft_trace_types type){
+	BPF_HASH(cache,u64,struct time_t);
+//to take the pid as a key should be okay, because measuring the evaluation time of a packet can be done with the one core configuration
+
+    void start_time_measure(struct pt_regs *ctx){
+        struct time_t tns;
+        tns.time_ns = bpf_ktime_get_ns();
+        tns.pid=bpf_get_current_pid_tgid();
+        cache.update(&tns.pid, &tns);
+    }
+
+	void trace_packet(struct pt_regs *ctx, struct nft_traceinfo *info, const struct nft_chain *chain, const struct nft_rule *rule, enum nft_trace_types type){
 		struct rule_statistic stats;
+        struct time_t tns;
+        struct time_t *start;
+        tns.time_ns = bpf_ktime_get_ns(); 
+        tns.pid = bpf_get_current_pid_tgid();
 		if(info->enabled){
-			bpf_trace_printk("Access: %u ,Swaps: %u trav_nodes %u\\n",info->rule_handle, info->swaps, info->trav_nodes);
+			//bpf_trace_printk("Access: %u ,Swaps: %u trav_nodes %u\\n",info->rule_handle, info->swaps, info->trav_nodes);
 			stats.handle = info->rule_handle;
 			stats.swaps = info->swaps;
 			stats.trav_nodes = info->trav_nodes;
 			stats.cpu = info->cpu;
+            start=cache.lookup(&tns.pid);
+            if(start == NULL){
+                stats.time_ns=0;
+            }else{
+                stats.time_ns = tns.time_ns - start->time_ns;
+            }
 			statistics.perf_submit(ctx, &stats,sizeof(stats)); 
 		}
 	}
@@ -100,7 +126,7 @@ def print_trav_rules(cpu, data, size):
 	
 def log(cpu, data, size):
 	rule_stats = b["statistics"].event(data)
-	out = f"{rule_stats.handle},{rule_stats.swaps},{rule_stats.trav_nodes},{rule_stats.cpu}\n"
+	out = f"{rule_stats.handle},{rule_stats.swaps},{rule_stats.trav_nodes},{rule_stats.cpu},{rule_stats.time_ns}\n"
 	f.write(out)
 	f.flush()
 	
@@ -117,8 +143,10 @@ def main():
 		b["trav_rules"].open_perf_buffer(print_trav_rules)
 	elif args[1] == '2':
 		f = open("stats.csv", "a")
-		f.write("ACCESS,SWAPS,TRAVERSED-NODES,CPU\n")
+		f.write("ACCESS,SWAPS,TRAVERSED-NODES,CPU,TIME(ns)\n")
 		b = BPF(text=get_statistics)
+		b.attach_kprobe(event="nft_do_chain", fn_name="start_time_measure")
+		b.attach_kprobe(event="nft_trace_packet", fn_name="trace_packet")
 		b["statistics"].open_perf_buffer(log)
 	else:
 		print("Usage: bpf_observer PROG\nPROG can be 1 or 2\n1: hooks into nft_do_chain\n2: creates a csv file")
