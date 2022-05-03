@@ -250,7 +250,7 @@ nft_do_chain(struct nft_pktinfo *pkt, void *priv)
 	bool genbit = READ_ONCE(net->nft.gencursor);
 	struct nft_traceinfo info;
 #ifdef CONFIG_SAL_DEBUG
-    unsigned int swaps;
+    unsigned int swaps = 0;
     unsigned int trav_nodes = 0;
     info.enabled = false;
 #endif
@@ -370,10 +370,12 @@ next_rule:
 	}
 
 #ifdef CONFIG_SAL_DEBUG
+    printk("Here\n");
     info.enabled = true;
     info.swaps = 0;
     info.trav_nodes = trav_nodes;
     info.rule_handle = 0;
+    info.cpu= smp_processor_id();
 #endif
 
 	nft_trace_packet(&info, basechain, NULL, NFT_TRACETYPE_POLICY);
