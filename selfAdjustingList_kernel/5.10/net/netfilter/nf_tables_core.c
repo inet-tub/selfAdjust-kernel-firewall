@@ -370,7 +370,6 @@ next_rule:
 	}
 
 #ifdef CONFIG_SAL_DEBUG
-    printk("Here\n");
     info.enabled = true;
     info.swaps = 0;
     info.trav_nodes = trav_nodes;
