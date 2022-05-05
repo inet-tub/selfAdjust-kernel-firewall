@@ -1,3 +1,4 @@
+#! /usr/bin/env python3
 from bcc import BPF
 from bcc.utils import printb
 import sys
@@ -102,7 +103,10 @@ get_statistics = """
             if(start == NULL){
                 stats.time_ns=0;
             }else{
-                stats.time_ns = tns.time_ns - start->time_ns;
+            	if(tns.time_ns < start->time_ns)
+            		stats.time_ns = 0;
+            	else
+                	stats.time_ns = tns.time_ns - start->time_ns;
             }
 			statistics.perf_submit(ctx, &stats,sizeof(stats)); 
 		}
@@ -142,7 +146,7 @@ def main():
 		b = BPF(text=prog)
 		b["trav_rules"].open_perf_buffer(print_trav_rules)
 	elif args[1] == '2':
-		f = open("stats.csv", "a")
+		f = open("/home/kernel/firewall/stats.csv", "w")
 		f.write("ACCESS,SWAPS,TRAVERSED-NODES,CPU,TIME(ns)\n")
 		b = BPF(text=get_statistics)
 		b.attach_kprobe(event="nft_do_chain", fn_name="start_time_measure")
