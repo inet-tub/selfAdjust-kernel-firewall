@@ -7918,7 +7918,7 @@ static int nf_tables_commit_chain_prepare(struct net *net, struct nft_chain *cha
             rcu_assign_pointer(sd->rules[chain->hook_num], new_rules);
         }
         //DEBUG
-        j=0;
+        /*j=0;
         struct nft_rule **rula = sd->rules[chain->hook_num];
         struct nft_rule *r;
         r = *rula;
@@ -7926,7 +7926,7 @@ static int nf_tables_commit_chain_prepare(struct net *net, struct nft_chain *cha
             r = *rula;
             printk("On: %d rule: %u\n",i, r->priority);
             rula++;
-        }
+        }*/
         //END DEBUG
     }
 #endif
