@@ -246,13 +246,17 @@ struct nft_rule *rule;
 
 	if(genbit){
 		old_rules = rcu_dereference(chain->rules_gen_1);
+        if(old_rules == NULL)
+            printk("PANIC OLDRULES = NULL\n");
 		rcu_assign_pointer(chain->rules_gen_1, chain->rules_next);
 	}else{
 		old_rules = rcu_dereference(chain->rules_gen_0);
+            printk("PANIC OLDRULES = NULL\n");
 		rcu_assign_pointer(chain->rules_gen_0, chain->rules_next);
 	}
     nf_tables_commit_chain_free_rules_old(old_rules);
 	chain->rules_next = NULL;
+ //   printk("Ret from %s\n", __FUNCTION__);
     return swaps;
 }
 #endif

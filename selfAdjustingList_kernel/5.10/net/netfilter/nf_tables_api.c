@@ -264,6 +264,7 @@ static int nft_deltable(struct nft_ctx *ctx)
 		return err;
 
 	nft_deactivate_next(ctx->net, ctx->table);
+    printk("Deltable\n");
 	return err;
 }
 
@@ -1225,9 +1226,11 @@ static void nf_tables_table_destroy(struct nft_ctx *ctx)
 		return;
 
 	rhltable_destroy(&ctx->table->chains_ht);
+    printk("free tables stuff\n");
 	kfree(ctx->table->name);
 	kfree(ctx->table->udata);
 	kfree(ctx->table);
+    printk("finished free tables stuff\n");
 }
 
 void nft_register_chain_type(const struct nft_chain_type *ctype)
@@ -1669,20 +1672,27 @@ static void nf_tables_chain_free_chain_rules(struct nft_chain *chain)
 	struct nft_rule **g0 = rcu_dereference_raw(chain->rules_gen_0);
 	struct nft_rule **g1 = rcu_dereference_raw(chain->rules_gen_1);
 
-	if (g0 != g1)
-		kvfree(g1);
+
+	if (g0 != g1) {
+        kvfree(g1);
+        printk("Free g1\n");
+    }
 	kvfree(g0);
-	/* should be NULL either via abort or via successful commit */
+    printk("Free g0\n");
+    /* should be NULL either via abort or via successful commit */
 	WARN_ON_ONCE(chain->rules_next);
+    printk("Free rules_next\n");
 	kvfree(chain->rules_next);
+    printk("End of free_chain rules \n");
 }
 
 void nf_tables_chain_destroy(struct nft_ctx *ctx)
 {
 	struct nft_chain *chain = ctx->chain;
 	struct nft_hook *hook, *next;
+    printk("chain->use: %d\n", chain->use);
 
-	if (WARN_ON(chain->use > 0))
+    if (WARN_ON(chain->use > 0))
 		return;
 
 	/* no concurrent access possible anymore */
@@ -7800,30 +7810,38 @@ static void nft_commit_release(struct nft_trans *trans)
 {
 	switch (trans->msg_type) {
 	case NFT_MSG_DELTABLE:
+        printk("NFT_MSG_DEL_TABLE\n");
 		nf_tables_table_destroy(&trans->ctx);
 		break;
 	case NFT_MSG_NEWCHAIN:
+        printk("NFT_MSG_NEWCHAIN\n");
 		free_percpu(nft_trans_chain_stats(trans));
 		kfree(nft_trans_chain_name(trans));
 		break;
 	case NFT_MSG_DELCHAIN:
+        printk("NFT_MSG_DELCHAIN\n");
 		nf_tables_chain_destroy(&trans->ctx);
 		break;
 	case NFT_MSG_DELRULE:
+        printk("NFT_MSG_DELRULE\n");
 		nf_tables_rule_destroy(&trans->ctx, nft_trans_rule(trans));
 		break;
 	case NFT_MSG_DELSET:
+        printk("NFT_MSG_DELSET\n");
 		nft_set_destroy(&trans->ctx, nft_trans_set(trans));
 		break;
 	case NFT_MSG_DELSETELEM:
+        printk("NFT_MSG_DELSETELEM\n");
 		nf_tables_set_elem_destroy(&trans->ctx,
 					   nft_trans_elem_set(trans),
 					   nft_trans_elem(trans).priv);
 		break;
 	case NFT_MSG_DELOBJ:
+        printk("NFT_MSG_DELOBJ\n");
 		nft_obj_destroy(&trans->ctx, nft_trans_obj(trans));
 		break;
 	case NFT_MSG_DELFLOWTABLE:
+        printk("NFT_MSG_DELFLOWTABLE\n");
 		if (nft_trans_flowtable_update(trans))
 			nft_flowtable_hooks_destroy(&nft_trans_flowtable_hooks(trans));
 		else
@@ -7851,7 +7869,8 @@ static void nf_tables_trans_destroy_work(struct work_struct *w)
 
 	synchronize_rcu();
 
-	list_for_each_entry_safe(trans, next, &head, list) {
+    printk("syched\n");
+    list_for_each_entry_safe(trans, next, &head, list) {
 		list_del(&trans->list);
 		nft_commit_release(trans);
 	}
