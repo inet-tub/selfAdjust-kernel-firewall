@@ -1,6 +1,7 @@
 from bcc import BPF
 from bcc.utils import printb
 import sys
+import time
 
 prog = """
 #include <net/netfilter/nf_tables.h>
@@ -81,15 +82,18 @@ get_statistics = """
 
     void start_time_measure(struct pt_regs *ctx){
         struct time_t tns;
+        u64 cpu = bpf_get_smp_processor_id();
         tns.time_ns = bpf_ktime_get_ns();
         tns.pid=bpf_get_current_pid_tgid();
-        cache.update(&tns.pid, &tns);
+        cache.update(&cpu, &tns);
+        //cache.update(&tns.pid, &tns);
     }
 
 	void trace_packet(struct pt_regs *ctx, struct nft_traceinfo *info, const struct nft_chain *chain, const struct nft_rule *rule, enum nft_trace_types type){
 		struct rule_statistic stats;
         struct time_t tns;
         struct time_t *start;
+        u64 cpu = bpf_get_smp_processor_id();
         tns.time_ns = bpf_ktime_get_ns(); 
         tns.pid = bpf_get_current_pid_tgid();
 		if(info->enabled){
@@ -98,7 +102,8 @@ get_statistics = """
 			stats.swaps = info->swaps;
 			stats.trav_nodes = info->trav_nodes;
 			stats.cpu = info->cpu;
-            start=cache.lookup(&tns.pid);
+            //start=cache.lookup(&tns.pid);
+            start = cache.lookup(&cpu);
             if(start == NULL){
                 stats.time_ns=0;
             }else{
@@ -159,6 +164,8 @@ if __name__ == '__main__':
 		main()
 	except KeyboardInterrupt:
 		if(f):
+			f.flush()
+			time.sleep(5)
 			f.close()
 	
 
