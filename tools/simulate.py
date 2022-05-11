@@ -50,7 +50,8 @@ def run_ruleset_and_trace(ssh, rule, size, loc):
     pkts=out_stats.read()
     pkts_num = float(pkts)/10.0
     print(pkts_num)
-    time.sleep(0.5)
+    time.sleep(1)
+    #input("Flush ruleset")
     ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command('nft flush ruleset')
     #ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command('nft list ruleset')
     return rule_set_size, pkts_num
@@ -86,7 +87,9 @@ def main():
                     of.write(","+str(pkts_num))
                     if rule not in "ipc2":
                         of.write(",")
-                    ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command('nft flush ruleset')
+                    
+                    #input("Flush ruleset!")
+                    #ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command('nft flush ruleset')
                     ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command('nft list ruleset')
                     print(ssh_stdout.read().decode('UTF-8'))
                       #  input("Continue")
