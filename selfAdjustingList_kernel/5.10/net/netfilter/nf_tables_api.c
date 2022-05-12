@@ -7823,7 +7823,7 @@ static void nft_commit_release(struct nft_trans *trans)
 		nf_tables_chain_destroy(&trans->ctx);
 		break;
 	case NFT_MSG_DELRULE:
-        printk("NFT_MSG_DELRULE\n");
+        //printk("NFT_MSG_DELRULE\n");
 		nf_tables_rule_destroy(&trans->ctx, nft_trans_rule(trans));
 		break;
 	case NFT_MSG_DELSET:

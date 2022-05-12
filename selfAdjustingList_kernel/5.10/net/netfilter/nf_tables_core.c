@@ -251,6 +251,7 @@ struct nft_rule *rule;
 		rcu_assign_pointer(chain->rules_gen_1, chain->rules_next);
 	}else{
 		old_rules = rcu_dereference(chain->rules_gen_0);
+        if(old_rules == NULL)
             printk("PANIC OLDRULES = NULL\n");
 		rcu_assign_pointer(chain->rules_gen_0, chain->rules_next);
 	}
