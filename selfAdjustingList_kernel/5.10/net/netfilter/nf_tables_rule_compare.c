@@ -63,7 +63,7 @@ int rule_compare(struct list_head *prev, struct list_head *matched){
 
     // a low number in the priority field is a high priority
     if(prev_rule->priority < r->priority){
-        printk("Rule %llu is a dependecy of Rule %llu\n", (long long unsigned int)prev_rule->handle, (long long unsigned int)r->handle);
+        //printk("Rule %llu is a dependecy of Rule %llu\n", (long long unsigned int)prev_rule->handle, (long long unsigned int)r->handle);
         //print_rule_info(&prev_rule->cmp_data);
         //print_rule_info(&r->cmp_data);
        return 1;
@@ -83,11 +83,11 @@ enum ra_state {
     UNEXPECTED,
 };
 
-static u8 nft_ra_payload(struct nft_expr *expr){
+static u8 nft_ra_payload(struct nft_expr *expr, u32 *prefix_mask, int *prefix_mask_set){
     struct nft_payload *payload;
     u8 ret;
     payload = nft_expr_priv(expr);
-   
+
     switch (payload->base)
     {
     case NFT_PAYLOAD_LL_HEADER:
@@ -104,11 +104,32 @@ static u8 nft_ra_payload(struct nft_expr *expr){
             break;
         case RULE_CMP_PROTOCOL:
             ret = PROTO;
-            break;
+            return ret;
         default:
             BUG();
             ret = UNKNOWN;
             break;
+        }
+        //prefixes are in network byte order
+        //certain length /8 /16 /24 of the prefeix_mask are done by only loading a certain amount of bytes from that field
+
+        switch (payload->len){
+            case 1:
+                *prefix_mask = 0x000000ff;
+                *prefix_mask_set = 1;
+                break;
+            case 2:
+                *prefix_mask = 0x0000ffff;
+                *prefix_mask_set = 1;
+                break;
+            case 3:
+                *prefix_mask = 0x00ffffff;
+                *prefix_mask_set = 1;
+                break;
+            case 4:
+                break;
+            default:
+                BUG();
         }
         break;
     case NFT_PAYLOAD_TRANSPORT_HEADER:
@@ -132,7 +153,7 @@ static u8 nft_ra_payload(struct nft_expr *expr){
             ret = UNKNOWN;
             break;
         }
-        break; 
+        break;
     default:
         BUG();
         break;
@@ -141,7 +162,7 @@ static u8 nft_ra_payload(struct nft_expr *expr){
     return ret;
 }
 
-static void nft_ra_cmp(struct nft_ra_info *data, struct nft_expr *expr, u8 f, u8 fast, u32 *prefix_mask){
+static void nft_ra_cmp(struct nft_ra_info *data, struct nft_expr *expr, u8 f, u8 fast, u32 *prefix_mask, int *prefix_mask_set){
     u32 val = 0;
     enum nft_cmp_ops op= 0;
     if(fast){
@@ -152,6 +173,13 @@ static void nft_ra_cmp(struct nft_ra_info *data, struct nft_expr *expr, u8 f, u8
         struct nft_cmp_expr *cmp = nft_expr_priv(expr);
         val = cmp->data.data[0];
         op = cmp->op;
+    }
+
+    //values don't need to be brought in host byte order, because only one byte is loaded when the field is PROTO
+    if(f == PROTO){
+        data->range[PROTO][LOWDIM] = val;
+        data->range[PROTO][HIGHDIM] = val;
+        return;
     }
 
     val = ntohl(val);
@@ -165,10 +193,11 @@ static void nft_ra_cmp(struct nft_ra_info *data, struct nft_expr *expr, u8 f, u8
         return;
     }
     //If a rule provded a subnet mask
-    if((f == SADDR || f == DADDR)&& *prefix_mask != 0){
+    if((f == SADDR || f == DADDR)&& *prefix_mask_set != 0){
         data->range[f][LOWDIM] = val + 1;
         data->range[f][HIGHDIM] = val + ~(*prefix_mask);
         *prefix_mask = 0;
+        *prefix_mask_set = 0;
         return;
     }
     if(f == SPORT || f == DPORT)
@@ -191,7 +220,7 @@ static void nft_ra_cmp(struct nft_ra_info *data, struct nft_expr *expr, u8 f, u8
             break;
         case NFT_CMP_GTE:
             data->range[f][LOWDIM] = val;
-            break;            
+            break;
         default:
             break;
     }
@@ -228,6 +257,7 @@ void nft_construct_rule_data(struct nft_ra_info *data, struct nft_rule *rule){
     u8 range_field;
     u32 prefix_mask;
     enum ra_state state = START;
+    int prefix_mask_set = 0;
     range_field = UNKNOWN;
     prefix_mask = 0;
 
@@ -239,14 +269,14 @@ void nft_construct_rule_data(struct nft_ra_info *data, struct nft_rule *rule){
     data->range[SPORT][HIGHDIM] = 0xffff;
     data->range[DPORT][LOWDIM] = 0;
     data->range[DPORT][HIGHDIM] = 0xffff;
+    //Default is all L4 Protocols are accepted
     data->range[PROTO][LOWDIM] = 0;
-    data->range[PROTO][HIGHDIM] = 0;
+    data->range[PROTO][HIGHDIM] = 0xff;
     data->priority = rule->priority;
 
-  
+
 
     nft_rule_for_each_expr(expr, last, rule){
-        printk("Eval rule\n");
         e = (unsigned long)expr->ops->eval;
         switch (state)
         {
@@ -260,7 +290,7 @@ void nft_construct_rule_data(struct nft_ra_info *data, struct nft_rule *rule){
             fallthrough;
         case START:
             if(e == (unsigned long)nft_payload_eval){
-                range_field = nft_ra_payload(expr);
+                range_field = nft_ra_payload(expr, &prefix_mask, &prefix_mask_set);
                 state = PAYLOAD_LOADED;
             }
             else if(e == (unsigned long)nft_meta_get_eval){
@@ -273,16 +303,17 @@ void nft_construct_rule_data(struct nft_ra_info *data, struct nft_rule *rule){
         case PAYLOAD_LOADED:
             if(e == (unsigned long)nft_cmp_eval){
                 /*for more complicated comparisons*/
-                nft_ra_cmp(data, expr, range_field, 0, &prefix_mask);
+                nft_ra_cmp(data, expr, range_field, 0, &prefix_mask, &prefix_mask_set);
                 state = PAYLOAD_LOADED;
             }else if(expr->ops == &nft_cmp_fast_ops){
-                nft_ra_cmp(data, expr, range_field, 1, &prefix_mask);
+                nft_ra_cmp(data, expr, range_field, 1, &prefix_mask, &prefix_mask_set);
                 state = NEXT_LOAD;
             }else if(expr->ops == &nft_bitwise_fast_ops){
                 prefix_mask = nft_ra_bitwise(expr);
+                prefix_mask_set = 1;
                 state = PAYLOAD_LOADED;
             }else if(e == (unsigned long)nft_payload_eval){
-                range_field = nft_ra_payload(expr);
+                range_field = nft_ra_payload(expr, &prefix_mask, &prefix_mask_set);
                 state = PAYLOAD_LOADED;
             }else if(e == (unsigned long)nft_meta_get_eval){
                 meta = nft_expr_priv(expr);
@@ -309,7 +340,7 @@ void nft_construct_rule_data(struct nft_ra_info *data, struct nft_rule *rule){
             break;
         }
     }
-    print_rule_info(data);
+    //print_rule_info(data);
 
 }
 #endif

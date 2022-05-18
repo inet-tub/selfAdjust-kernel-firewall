@@ -27,6 +27,7 @@
 #include <net/netfilter/nft_meta.h>
 #include <linux/spinlock.h>
 #include <linux/list_sort.h>
+#include <linux/list_mrf_extension.h>
 #endif
 
 #define NFT_MODULE_AUTOLOAD_LIMIT (MODULE_NAME_LEN - sizeof("nft-expr-255-"))
@@ -3380,15 +3381,27 @@ static int nf_tables_newrule(struct net *net, struct sock *nlsk,
 		}
 
 		if (nlh->nlmsg_flags & NLM_F_APPEND) {
-			if (old_rule)
-				list_add_rcu(&rule->list, &old_rule->list);
-			else
-				list_add_tail_rcu(&rule->list, &chain->rules);
+			if (old_rule) {
+                printk("Case 1\n");
+                list_add_rcu(&rule->list, &old_rule->list);
+            }
+			else {
+                printk("Case 2\n");
+#ifdef CONFIG_SAL_INSERT
+                list_sal_insert(&rule->list, &chain->rules, &rule_compare);
+#else
+                list_add_tail_rcu(&rule->list, &chain->rules);
+#endif
+            }
 		 } else {
-			if (old_rule)
-				list_add_tail_rcu(&rule->list, &old_rule->list);
-			else
-				list_add_rcu(&rule->list, &chain->rules);
+			if (old_rule) {
+                printk("Case 3\n");
+                list_add_tail_rcu(&rule->list, &old_rule->list);
+            }
+			else {
+                printk("Case 4\n");
+                list_add_rcu(&rule->list, &chain->rules);
+            }
 		}
 	}
 	kvfree(info);

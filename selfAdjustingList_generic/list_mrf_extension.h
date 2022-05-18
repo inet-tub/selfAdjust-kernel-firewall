@@ -127,7 +127,9 @@ static inline void list_sal_insert(struct list_head *new, struct list_head *head
         }
 
     }
-
+    if(last_dep != 0){
+        printk("last dep of %u,%u handle %u, prio %u\n", container_of(new, struct nft_rule, list)->handle, container_of(new, struct nft_rule, list)-> priority,container_of(last_dep, struct nft_rule, list)->handle, container_of(last_dep, struct nft_rule, list)-> priority);
+    }
 
     list_for_each(pos, head){
         //an element in the list must come behind new

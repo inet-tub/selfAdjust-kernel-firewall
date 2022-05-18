@@ -289,10 +289,6 @@ next_rule:
 	rule = *rules;
 	regs.verdict.code = NFT_CONTINUE;
 	for (; *rules ; rules++) {
-	//MyCode
-#ifdef CONFIG_SAL_DEBUG
-		atomic_inc(&chain->traversed_rules);
-#endif
 		rule = *rules;
 		nft_rule_for_each_expr(expr, last, rule) {
 			if (expr->ops == &nft_cmp_fast_ops)
@@ -325,13 +321,6 @@ next_rule:
 	case NF_QUEUE:
 	case NF_STOLEN:
 	//printk(KERN_INFO "Rule taken handle %lu\n", rule->handle);
-#ifdef CONFIG_SAL_GENERAL
-#ifdef CONFIG_SAL_DEFER_UPDATE
-		schedule_swap(chain, rule, genbit);
-#else
-		swap_in_place(chain, rule, genbit);
-#endif
-#endif
 		nft_trace_packet(&info, chain, rule,
 				 NFT_TRACETYPE_RULE);
 		return regs.verdict.code;
