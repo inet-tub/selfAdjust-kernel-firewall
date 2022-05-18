@@ -28,6 +28,7 @@
 
 #include <linux/preempt.h>
 
+
 static noinline void __nft_trace_packet(struct nft_traceinfo *info,
 					const struct nft_chain *chain,
 					enum nft_trace_types type)
@@ -219,37 +220,49 @@ struct nft_rule *rule;
 	int i;
     unsigned int swaps;
 	num_of_rules = 0;
+
+    if(!spin_trylock(&chain->rules_lock)){
+        printk("Skipped, lock is held..:( %i\n", smp_processor_id());
+        return 0;
+    }
+    printk("I have the lock %d lock is held %d\n", smp_processor_id(), spin_is_locked(&chain->rules_lock));
 //	printk("In: START %s\n",__FUNCTION__);
 	rule = list_entry(&chain->rules, struct nft_rule, list);
 	if(list_is_first(&matched_rule->list, &rule->list)){
 		//printk("Matched rule is first\n");
 		return 0;
 	}
-	list_for_each_entry_continue(rule, &chain->rules, list) {
+	/*list_for_each_entry_continue(rule, &chain->rules, list) {
 		num_of_rules++;
-	}
+	}*/
 
 	swaps = list_access(&matched_rule->list, &chain->rules, &rule_compare);
 
 	chain->rules_next = nf_tables_chain_alloc_rules(chain, num_of_rules);
+	chain->rules_next = nf_tables_chain_alloc_rules(chain, chain->num_rules);
 	if(!chain->rules_next){
 		printk("Memalloc failed\n");
 		return 0;
 	}
 
 	i=0;
+    printk("chain-> num rules %u\n", chain->num_rules);
 	list_for_each_entry_continue(rule, &chain->rules, list) {
+        printk("%lu, %i ", rule->handle,i++);
+        //this seems to be a very heavy operation...
 		chain->rules_next[i++] = rule;
 	}
 	chain->rules_next[i] = NULL;
 
 
 	if(genbit){
+        //chain->rules_next = rcu_dereference(chain->rules_gen_1);
 		old_rules = rcu_dereference(chain->rules_gen_1);
         if(old_rules == NULL)
             printk("PANIC OLDRULES = NULL\n");
 		rcu_assign_pointer(chain->rules_gen_1, chain->rules_next);
 	}else{
+        //chain->rules_next = rcu_dereference(chain->rules_gen_0);
 		old_rules = rcu_dereference(chain->rules_gen_0);
         if(old_rules == NULL)
             printk("PANIC OLDRULES = NULL\n");
@@ -258,6 +271,7 @@ struct nft_rule *rule;
     nf_tables_commit_chain_free_rules_old(old_rules);
 	chain->rules_next = NULL;
  //   printk("Ret from %s\n", __FUNCTION__);
+    spin_unlock(&chain->rules_lock);
     return swaps;
 }
 #endif
@@ -265,6 +279,7 @@ struct nft_rule *rule;
 unsigned int
 nft_do_chain(struct nft_pktinfo *pkt, void *priv)
 {
+    printk("Eval packet: %i\n", smp_processor_id());
     //MyCode - remove const
 	struct nft_chain *chain = priv, *basechain = chain;
 	const struct net *net = nft_net(pkt);

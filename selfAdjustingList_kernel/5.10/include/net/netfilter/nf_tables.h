@@ -976,7 +976,8 @@ struct nft_chain {
 	atomic_t 	traversed_rules;
 #endif
 #ifdef CONFIG_SAL_LOCKING_ENABLE
-	struct mutex rules_lock;
+	spinlock_t rules_lock;
+    unsigned int num_rules;
 #endif
 	/* Only used during control plane commit phase: */
 	struct nft_rule			**rules_next;

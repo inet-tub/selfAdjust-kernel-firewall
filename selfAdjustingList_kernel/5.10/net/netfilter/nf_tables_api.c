@@ -1681,7 +1681,7 @@ static void nf_tables_chain_free_chain_rules(struct nft_chain *chain)
     printk("Free g0\n");
     /* should be NULL either via abort or via successful commit */
 	WARN_ON_ONCE(chain->rules_next);
-    printk("Free rules_next\n");
+    printk("Free rules_next %p\n", chain->rules_next);
 	kvfree(chain->rules_next);
     printk("End of free_chain rules \n");
 }
@@ -2071,6 +2071,8 @@ static int nf_tables_addchain(struct nft_ctx *ctx, u8 family, u8 genmask,
 #ifdef CONFIG_SAL_DEBUG
 	atomic_set(&chain->traversed_rules, 0);
 #endif
+    spin_lock_init(&chain->rules_lock);
+    chain->num_rules=0;
 
 	if (nla[NFTA_CHAIN_NAME]) {
 		chain->name = nla_strdup(nla[NFTA_CHAIN_NAME], GFP_KERNEL);
@@ -7482,7 +7484,7 @@ static int nf_tables_reset_chain_rules(struct nft_chain *chain, struct net *net)
     int i;
     bool genbit;
 #ifdef CONFIG_SAL_LOCKING_ENABLE
-    mutex_lock(&chain->rules_lock);
+    spin_lock(&chain->rules_lock);
 #endif
     genbit = net->nft.gencursor;
     list_sort(NULL, &chain->rules, nf_tables_rule_sort);
@@ -7493,7 +7495,7 @@ static int nf_tables_reset_chain_rules(struct nft_chain *chain, struct net *net)
     chain->rules_next = nf_tables_chain_alloc_rules(chain, num_rules);
     if(!chain->rules_next){
 #ifdef CONFIG_SAL_LOCKING_ENABLE
-    	mutex_unlock(&chain->rules_lock);
+    	spin_unlock(&chain->rules_lock);
 #endif
         return -ENOMEM;
     }
@@ -7516,7 +7518,7 @@ static int nf_tables_reset_chain_rules(struct nft_chain *chain, struct net *net)
 
     atomic_set(&chain->traversed_rules, 0);
 #ifdef CONFIG_SAL_LOCKING_ENABLE
-    mutex_unlock(&chain->rules_lock);
+    spin_unlock(&chain->rules_lock);
 #endif
 return 0;
 }
@@ -7899,6 +7901,7 @@ static int nf_tables_commit_chain_prepare(struct net *net, struct nft_chain *cha
 		if (nft_is_active_next(net, rule))
 			alloc++;
 	}
+    chain->num_rules = alloc;
 
 	chain->rules_next = nf_tables_chain_alloc_rules(chain, alloc);
 	if (!chain->rules_next){
