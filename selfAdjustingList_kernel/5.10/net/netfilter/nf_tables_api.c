@@ -2074,6 +2074,7 @@ static int nf_tables_addchain(struct nft_ctx *ctx, u8 family, u8 genmask,
 
 #ifdef CONFIG_SAL_DEBUG
 	atomic_set(&chain->traversed_rules, 0);
+	atomic_set(&chain->proc_pkts, 0);
 #endif
 #ifdef CONFIG_SAL_GENERAL
     chain->hook_num = hook.num;
@@ -7405,6 +7406,9 @@ err_fill_gen_info:
 static int nf_tables_fill_travnode_info(struct sk_buff *skb, struct nft_chain *chain, u32 portid, u32 seq) {
 	struct nlmsghdr *nlh;
 	struct nfgenmsg *nfmsg;
+    u32 avg_trav_nodes=0;
+    u32 trav_nodes=0;
+    u32 pkts=0;
 	int event = nfnl_msg_type(NFNL_SUBSYS_NFTABLES, NFT_MSG_GETTRAVNODES);
 	nlh = nlmsg_put(skb, portid, seq, event, sizeof(struct nfgenmsg), 0);
 	if(nlh == NULL)
@@ -7414,7 +7418,19 @@ static int nf_tables_fill_travnode_info(struct sk_buff *skb, struct nft_chain *c
 	nfmsg->nfgen_family = AF_UNSPEC;
 	nfmsg->version = 0;
 	nfmsg->res_id = 0;
-	if(nla_put_be32(skb, NLA_U32, htonl(atomic_read(&chain->traversed_rules)))){
+    trav_nodes=atomic_read(&chain->traversed_rules);
+    pkts=atomic_read(&chain->proc_pkts);
+    printk("travnodes = %u pkts = %u", trav_nodes, pkts);
+    if(pkts==0){
+        avg_trav_nodes = 0;
+    }else{
+#ifdef CONFIG_SAL_GENERAL
+    avg_trav_nodes=2*(trav_nodes)/pkts;
+#else
+    avg_trav_nodes=(trav_nodes)/pkts;
+#endif
+    }
+	if(nla_put_be32(skb, NLA_U32, htonl(avg_trav_nodes))){
 		goto nla_put_failure;
 	}
 	nlmsg_end(skb, nlh);
@@ -7506,6 +7522,7 @@ static int nf_tables_reset_chain_rules(struct nft_chain *chain, struct net *net)
 #endif // CONFIG_SAL_GENERAL
 //if SAL_GENERAL is not enabled => the default list is used just set the traversed rules counter to 0
     atomic_set(&chain->traversed_rules, 0);
+    atomic_set(&chain->proc_pkts, 0);
     return 0;
 }
 
@@ -9214,7 +9231,11 @@ static struct pernet_operations nf_tables_net_ops = {
 static int __init nf_tables_module_init(void)
 {
 	int err;
-
+#ifdef CONFIG_SAL_GENERAL
+    printk("Loading self adjusting list");
+#else
+    printk("Loading default nf tables");
+#endif
 	spin_lock_init(&nf_tables_destroy_list_lock);
 	err = register_pernet_subsys(&nf_tables_net_ops);
 	if (err < 0)

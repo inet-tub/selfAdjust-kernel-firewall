@@ -6,13 +6,14 @@ import os
 import subprocess
 
 remote_base_path="/home/kernel/firewall/rules_and_traces"
-#rule_sets = ["acl1", "acl2", "acl3", "acl4", "acl5", "fw1", "fw2", "fw3", "fw4", "fw5", "ipc1", "ipc2"]
-rule_sets = ["acl1"]
-rule_sizes = ["64", "128", "256", "512", "1024", "2048", "4096","6144", "8192"]
-#rule_sizes = ["64", "128", "256", "512", "1024"]
-#rule_sizes = ["64", "128", "256", "512", "1024", "2048"]
+# rule_sets = ["acl1", "acl2", "acl3", "acl4", "acl5", "fw1", "fw2", "fw3", "fw4", "fw5", "ipc1", "ipc2"]
+rule_sets = ["acl1", "acl2"]
+# rule_sets = ["acl1"]
+# rule_sizes = ["64", "128", "256", "512", "1024", "2048", "4096","6144", "8192"]
+#rule_sizes = ["8192"]
+rule_sizes = ["64", "128", "256", "512", "1024", "2048","4096", "8192"]
 locality = ["0","10000"]
-#locality = ["1000", "10000"]
+# locality = ["0"]
 pktgen = "/opt/pktgen-21.11.0/Builddir/app/pktgen"
 lua_script="/home/client/firewall/tools/measure_rx_pkts.lua"
 measure_trav_nodes="/home/client/firewall/tools/tx_trav_nodes.lua"
@@ -32,13 +33,14 @@ def exec_bpf_observer(filename):
 
 def get_pcap_filename(rule_set, size, locality,run):
     base = "/home/client/firewall/rules_and_traces/"
-    return base+"acl1_only"+"/"+rule_set+"_seed-"+size+"-10-"+locality+"-100-"+str(run)+".trace.pcap"
+    #return base+"acl1_only"+"/"+rule_set+"_seed-"+size+"-10-"+locality+"-100-"+str(run)+".trace.pcap"
     #return base+rule_set+"/"+rule_set+"_"+size+"/"+rule_set+"_seed-"+size+"-10-"+locality+"-100.trace.pcap"
+    return base+"/traces/"+rule_set+"_seed-"+size+"-10-"+locality+"-100.trace.pcap"
 
 
 def install_ruleset(ssh, rule, size, loc,run):
-    #ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command('nft -f '+remote_base_path+'/'+rule+'/'+rule+'_'+size+'/*.nf')
-    ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command('nft -f '+remote_base_path+'/acl1_only/nf/'+rule+'_seed-'+size+'-'+str(run)+'.rules.nf')
+    ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command('nft -f '+remote_base_path+'/'+rule+'/'+rule+'_'+size+'/*.nf')
+    #ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command('nft -f '+remote_base_path+'/acl1_only/nf/'+rule+'_seed-'+size+'-'+str(run)+'.rules.nf')
     print(ssh_stdout.read().decode('UTF-8'))
     print(ssh_stderr.read().decode('UTF-8'))
     time.sleep(1)
@@ -73,9 +75,10 @@ def run_ruleset_and_trace(ssh, rule, size, loc,run):
 
 
 def measure_pkts(ssh):
-    for run in range(0,4):
+    for run in range(0,10):
         for loc in locality:
-            outfile="nf_tables_per_cpu-"+loc+"_"+str(run)+"_sanatized_traffic_acl1_only.csv"
+            fail_count=0
+            outfile="nf_tables_per_cpu-"+loc+"_"+str(run)+"_small_rulesets.csv"
             of=open(outfile,"w")
             #of.write("size,acl1,acl2,acl3,acl4,acl5,fw1,fw2,fw3,fw4,fw5,ipc1,ipc2\n")
             #of.write("acl1_s,acl1,acl2_s,acl2,acl3_s,acl3,acl4_s,acl4,acl5_s,acl5,fw1_s,fw1,fw2_s,fw2,fw3_s,fw3,fw4_s,fw4,fw5_s,fw5,ipc1_s,ipc1,ipc2_s,ipc2\n")
@@ -92,7 +95,7 @@ def measure_pkts(ssh):
 
                     of.write(str(rule_set_size))
                     of.write(","+str(pkts_num))
-                    if rule not in "acl1":
+                    if rule not in "ipc2":
                         of.write(",")
                     
                     #input("Flush ruleset!")
@@ -108,7 +111,7 @@ def measure_traversed_nodes(ssh):
         for loc in locality:
             for size in rule_sizes:
                 for rule in rule_sets:
-                    bpf = multiprocessing.Process(target=exec_bpf_observer, args=("per_cpu-"+rule+"-"+size+"-"+loc+"_acl1_only"+str(run),))
+                    bpf = multiprocessing.Process(target=exec_bpf_observer, args=("per_cpu-"+rule+"-"+size+"-"+loc+"_"+str(run),))
                     bpf.start()
                     time.sleep(2)
                     install_ruleset(ssh, rule, size, loc,run)

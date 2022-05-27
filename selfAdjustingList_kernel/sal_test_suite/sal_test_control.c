@@ -69,7 +69,7 @@ int main(int argc, char **argv){
                 break;
             case NFT_MSG_GETTRAVNODES:
                 if(ret->attr.nla_type == MNL_TYPE_U32){
-                    printf("Traversed Nodes: %u\n", ntohl(*(unsigned int *)ret->data));
+                    printf("%u\n", ntohl(*(unsigned int *)ret->data));
                 }
                 //     printf("attr_len: %hu attr_type: %hu traversed nodes: %d\n", ret->attr.nla_len, ret->attr.nla_type, ntohl(*(int *)ret->data));
                 break;

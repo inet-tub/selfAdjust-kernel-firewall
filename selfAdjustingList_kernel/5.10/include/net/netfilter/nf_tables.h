@@ -973,6 +973,7 @@ struct nft_chain {
 //MyCode
 #ifdef CONFIG_SAL_DEBUG
 	atomic_t 	traversed_rules;
+    atomic_t    proc_pkts;
 #endif
 #ifdef CONFIG_SAL_LOCKING_ENABLE
 	spinlock_t rules_lock;

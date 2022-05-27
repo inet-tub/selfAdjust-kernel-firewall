@@ -220,6 +220,7 @@ nft_do_chain(struct nft_pktinfo *pkt, void *priv)
     unsigned int swaps;
     unsigned int trav_nodes = 0;
     info.enabled = false;
+    atomic_inc(&chain->proc_pkts);
 #endif
 	info.trace = false;
 	if (static_branch_unlikely(&nft_trace_enabled))
