@@ -2075,6 +2075,7 @@ static int nf_tables_addchain(struct nft_ctx *ctx, u8 family, u8 genmask,
 #ifdef CONFIG_SAL_DEBUG
 	atomic_set(&chain->traversed_rules, 0);
 	atomic_set(&chain->proc_pkts, 0);
+	atomic_set(&chain->swaps, 0);
 #endif
 #ifdef CONFIG_SAL_GENERAL
     chain->hook_num = hook.num;
@@ -7409,6 +7410,8 @@ static int nf_tables_fill_travnode_info(struct sk_buff *skb, struct nft_chain *c
     u32 avg_trav_nodes=0;
     u32 trav_nodes=0;
     u32 pkts=0;
+    u32 swaps=0;
+    u32 avg_swaps=0;
 	int event = nfnl_msg_type(NFNL_SUBSYS_NFTABLES, NFT_MSG_GETTRAVNODES);
 	nlh = nlmsg_put(skb, portid, seq, event, sizeof(struct nfgenmsg), 0);
 	if(nlh == NULL)
@@ -7420,17 +7423,23 @@ static int nf_tables_fill_travnode_info(struct sk_buff *skb, struct nft_chain *c
 	nfmsg->res_id = 0;
     trav_nodes=atomic_read(&chain->traversed_rules);
     pkts=atomic_read(&chain->proc_pkts);
+    swaps=atomic_read(&chain->swaps);
     printk("travnodes = %u pkts = %u", trav_nodes, pkts);
     if(pkts==0){
         avg_trav_nodes = 0;
+        avg_swaps=0;
     }else{
 #ifdef CONFIG_SAL_GENERAL
-    avg_trav_nodes=2*(trav_nodes)/pkts;
+    avg_trav_nodes=(trav_nodes)/pkts;
 #else
     avg_trav_nodes=(trav_nodes)/pkts;
 #endif
+    avg_swaps=swaps/pkts;
     }
 	if(nla_put_be32(skb, NLA_U32, htonl(avg_trav_nodes))){
+		goto nla_put_failure;
+	}
+	if(nla_put_be32(skb, NLA_U32, htonl(avg_swaps))){
 		goto nla_put_failure;
 	}
 	nlmsg_end(skb, nlh);
@@ -7498,30 +7507,11 @@ static void nf_tables_commit_chain_free_rules_old(struct nft_rule **rules);
 
 static int nf_tables_reset_chain_rules(struct nft_chain *chain, struct net *net) {
 #ifdef CONFIG_SAL_GENERAL
-    struct nft_rule *rule;
-    struct nft_rule **rules;
-    unsigned int num_rules;
-    int i;
-    bool genbit;
-    num_rules = 0;
-    genbit = net->nft.gencursor;
 
-    if(genbit) {
-        rules = rcu_dereference(chain->rules_gen_1);
-    }else{
-        rules = rcu_dereference(chain->rules_gen_0);
-    }
-    list_sort(NULL, &chain->rules, nf_tables_rule_sort);
-
-    i = 0;
-    //To avoid compiler warning of uninitialized variable rule
-	rule = list_entry(&chain->rules, struct nft_rule, list);
-    list_for_each_entry_continue(rule, &chain->rules, list) {
-        rules[i++] = rule;
-    }
 #endif // CONFIG_SAL_GENERAL
 //if SAL_GENERAL is not enabled => the default list is used just set the traversed rules counter to 0
     atomic_set(&chain->traversed_rules, 0);
+    atomic_set(&chain->swaps, 0);
     atomic_set(&chain->proc_pkts, 0);
     return 0;
 }

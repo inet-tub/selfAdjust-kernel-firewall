@@ -190,7 +190,7 @@ static unsigned int nft_access_rule(struct nft_rule **rules, struct nft_rule *ma
         }
         idx -= 1;
     }
-    return swap_count;
+    return swap_count+1; // +1 because swap to the head of the list
 
 }
 #endif
@@ -293,6 +293,8 @@ next_rule:
 #ifdef CONFIG_SAL_DEBUG
         //printk("Accessed rule %u on idx %u\n", rule->priority, idx);
         swaps = nft_access_rule(rules_backup, rule, idx);
+        atomic_add(swaps, &chain->swaps);
+        atomic_add(idx, &chain->traversed_rules);
         info.enabled = true;
         info.trav_nodes = trav_nodes;
         info.swaps = swaps;
