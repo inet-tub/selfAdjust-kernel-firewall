@@ -8037,6 +8037,8 @@ void nft_chain_del(struct nft_chain *chain)
 
     int i;
 	struct nft_table *table = chain->table;
+    struct nft_rule **old_rules;
+
 
 	WARN_ON_ONCE(rhltable_remove(&table->chains_ht, &chain->rhlhead,
 				     nft_chain_ht_params));
@@ -8046,8 +8048,10 @@ void nft_chain_del(struct nft_chain *chain)
     for_each_possible_cpu(i) {
         struct softnet_data *sd = &per_cpu(softnet_data, i);
         if(sd->rules[chain->hook_num]) {
-            kfree(sd->rules[chain->hook_num]);
-            sd->rules[chain->hook_num] = NULL;
+            old_rules=rcu_dereference(sd->rules[chain->hook_num]);
+            rcu_assign_pointer(sd->rules[chain->hook_num], NULL);
+            synchronize_rcu();
+            kfree(old_rules);
         }
     }
 #endif
