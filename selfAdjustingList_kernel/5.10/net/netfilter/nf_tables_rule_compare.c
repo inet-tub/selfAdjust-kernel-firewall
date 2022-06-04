@@ -337,7 +337,8 @@ void nft_construct_rule_data(struct nft_ra_info *data, struct nft_rule *rule){
         case END:
             break;
         default:
-            BUG();
+            //BUG();
+            state=NEXT_LOAD;
             break;
         }
     }
