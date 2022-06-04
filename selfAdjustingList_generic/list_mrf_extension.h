@@ -116,8 +116,11 @@ static inline void list_sal_insert(struct list_head *new, struct list_head *head
     struct list_head *last_dep_next;
     struct list_head *last_dep_to_new;
     struct list_head *last;
+    unsigned int loop_counter = 0;
+    unsigned int outer_loop = 0;
     new->prev = new;
     new->next = new;
+
 
     list_for_each(pos,head){
         //new must go behind and element which is already in the list
@@ -131,6 +134,7 @@ static inline void list_sal_insert(struct list_head *new, struct list_head *head
         printk("last dep of %u,%u handle %u, prio %u\n", container_of(new, struct nft_rule, list)->handle, container_of(new, struct nft_rule, list)-> priority,container_of(last_dep, struct nft_rule, list)->handle, container_of(last_dep, struct nft_rule, list)-> priority);
     }
 
+
     list_for_each(pos, head){
         //an element in the list must come behind new
         if(pos == last_dep)
@@ -138,7 +142,8 @@ static inline void list_sal_insert(struct list_head *new, struct list_head *head
 
         if(is_dependent(new, pos)){
             last_dep_to_new = pos->prev;
-            list_del_rcu(pos);
+            //list_del_rcu(pos);
+            list_del(pos);
             list_add_tail(pos,new);
             pos = last_dep_to_new;
             if(!last_dep){ // we can just insert new in front of pos, because new does not need to go behind another element
@@ -150,10 +155,11 @@ static inline void list_sal_insert(struct list_head *new, struct list_head *head
             if(!list_empty(new)){ //search if we have an element in the sublist where pos has a dependency to and therefore needs also be added to the sublist
                 list_for_each(pos1, new){
                     if(is_dependent(pos1, pos)){
-                        tmp = pos1->prev;
-                        list_del_rcu(pos1);
-                        list_add_tail(pos1,new);
-                        pos1 = tmp;
+                        tmp = pos->prev;
+                        //list_del_rcu(pos1);
+                        list_del(pos);
+                        list_add_tail(pos,new);
+                        pos = tmp;
                     }
                 }
             }
@@ -176,17 +182,17 @@ static inline void list_sal_insert(struct list_head *new, struct list_head *head
         last_dep_next->prev = new;
     }else { //We are free to insert new anywhere
         if(list_empty(new)){
-            list_add_tail_rcu(new, head);
+            //list_add_tail_rcu(new, head);
+            list_add_tail(new,head);
         }else{ // we insert it as much forward in the list as possible
             last = new->prev;
             last->next = last_dep_to_new->next;
             new->prev = last_dep_to_new;
-            rcu_assign_pointer(last_dep_to_new->next, new);
-            last_dep_to_new->prev = new;
+            //rcu_assign_pointer(last_dep_to_new->next, new);
+            last_dep_to_new->next->prev = last;
+            last_dep_to_new->next = new;
         }
     }
 
 }
-
-
 #endif //SELFADJUSTINGLIST_GENERIC_LIST_MRF_EXTENSION_H

@@ -3382,11 +3382,9 @@ static int nf_tables_newrule(struct net *net, struct sock *nlsk,
 
 		if (nlh->nlmsg_flags & NLM_F_APPEND) {
 			if (old_rule) {
-                printk("Case 1\n");
                 list_add_rcu(&rule->list, &old_rule->list);
             }
 			else {
-                printk("Case 2\n");
 #ifdef CONFIG_SAL_INSERT
                 list_sal_insert(&rule->list, &chain->rules, &rule_compare);
 #else
