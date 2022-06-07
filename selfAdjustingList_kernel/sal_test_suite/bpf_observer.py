@@ -75,9 +75,12 @@ get_statistics = """
         unsigned int trav_nodes;
         unsigned int cpu;
         u64 time_ns;
+        u64 time_ns_reorder;
     };
+
     BPF_PERF_OUTPUT(statistics);
     BPF_HASH(cache,u64,struct time_t);
+    BPF_HASH(reorder,u64,struct time_t);
 //to take the pid as a key should be okay, because measuring the evaluation time of a packet can be done with the one core configuration
 
     void start_time_measure(struct pt_regs *ctx){
@@ -87,6 +90,31 @@ get_statistics = """
         tns.pid=bpf_get_current_pid_tgid();
         cache.update(&cpu, &tns);
         //cache.update(&tns.pid, &tns);
+    }
+
+    void start_time_measure_reorder(struct pt_regs *ctx){
+        struct time_t tns;
+        u64 cpu = bpf_get_smp_processor_id();
+        tns.time_ns = bpf_ktime_get_ns();
+        tns.pid=bpf_get_current_pid_tgid();
+        reorder.update(&cpu, &tns);
+    }
+
+    void stop_time_measure_reorder(struct pt_regs *ctx){
+        struct time_t tns;
+        struct time_t *start;
+        u64 cpu = bpf_get_smp_processor_id();
+        start = reorder.lookup(&cpu);
+        tns.pid=0;
+        tns.time_ns=0;
+        if(start == NULL){
+            tns.time_ns = 0;
+            //bpf_trace_printk("NUL L\\n");
+        }else{
+            //bpf_trace_printk("NOT NUL L\\n");
+            tns.time_ns = bpf_ktime_get_ns() - start->time_ns;
+        }
+        reorder.update(&cpu, &tns);
     }
 
     void trace_packet(struct pt_regs *ctx, struct nft_traceinfo *info, const struct nft_chain *chain, const struct nft_rule *rule, enum nft_trace_types type){
@@ -108,6 +136,12 @@ get_statistics = """
                 stats.time_ns=0;
             }else{
                 stats.time_ns = tns.time_ns - start->time_ns;
+            }
+            start = reorder.lookup(&cpu);
+            if(start == NULL){
+                stats.time_ns_reorder = 99;
+            }else{
+                stats.time_ns_reorder = start->time_ns;
             }
             statistics.perf_submit(ctx, &stats,sizeof(stats)); 
         }
@@ -136,6 +170,11 @@ def log(cpu, data, size):
     f.write(out)
     f.flush()
 
+def log2(cpu, data, size):
+    rule_stats = b["statistics"].event(data)
+    out = f"{rule_stats.handle},{rule_stats.swaps},{rule_stats.trav_nodes},{rule_stats.cpu},{rule_stats.time_ns},{rule_stats.time_ns_reorder}\n"
+    f.write(out)
+    f.flush()
     
 
 def main():
@@ -155,11 +194,21 @@ def main():
         b.attach_kprobe(event="nft_do_chain", fn_name="start_time_measure")
         b.attach_kprobe(event="nft_trace_packet", fn_name="trace_packet")
         b["statistics"].open_perf_buffer(log)
+    elif args[1] == '3':
+        f = open(args[2]+".csv", "w")
+        f.write("ACCESS,SWAPS,TRAVERSED-NODES,CPU,TIME(ns),REORDER(ns)\n")
+        b = BPF(text=get_statistics)
+        b.attach_kprobe(event="nft_do_chain", fn_name="start_time_measure")
+        b.attach_kprobe(event="nft_trace_packet", fn_name="trace_packet")
+        b.attach_kprobe(event="nft_access_rule", fn_name="start_time_measure_reorder")
+        b.attach_kretprobe(event="nft_access_rule", fn_name="stop_time_measure_reorder")
+        b["statistics"].open_perf_buffer(log2)
     else:
         print("Usage: bpf_observer PROG\nPROG can be 1 or 2\n1: hooks into nft_do_chain\n2: creates a csv file")
         sys.exit(-1)
     while 1:
         b.perf_buffer_poll()
+        #b.trace_print()
         
 if __name__ == '__main__':
     try:
