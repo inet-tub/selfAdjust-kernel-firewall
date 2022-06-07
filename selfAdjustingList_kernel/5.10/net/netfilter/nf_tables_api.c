@@ -2073,8 +2073,9 @@ static int nf_tables_addchain(struct nft_ctx *ctx, u8 family, u8 genmask,
 	chain->table = table;
 
 #ifdef CONFIG_SAL_DEBUG
-	atomic_set(&chain->traversed_rules, 0);
-	atomic_set(&chain->proc_pkts, 0);
+	atomic64_set(&chain->traversed_rules, 0);
+	atomic64_set(&chain->expr, 0);
+	atomic64_set(&chain->proc_pkts, 0);
 	atomic_set(&chain->swaps, 0);
 #endif
 #ifdef CONFIG_SAL_GENERAL
@@ -7408,8 +7409,10 @@ static int nf_tables_fill_travnode_info(struct sk_buff *skb, struct nft_chain *c
 	struct nlmsghdr *nlh;
 	struct nfgenmsg *nfmsg;
     u32 avg_trav_nodes=0;
-    u32 trav_nodes=0;
-    u32 pkts=0;
+    u64 trav_nodes=0;
+    u64 pkts=0;
+    u64 expr=0;
+    u32 avg_expr=0;
     u32 swaps=0;
     u32 avg_swaps=0;
 	int event = nfnl_msg_type(NFNL_SUBSYS_NFTABLES, NFT_MSG_GETTRAVNODES);
@@ -7421,13 +7424,15 @@ static int nf_tables_fill_travnode_info(struct sk_buff *skb, struct nft_chain *c
 	nfmsg->nfgen_family = AF_UNSPEC;
 	nfmsg->version = 0;
 	nfmsg->res_id = 0;
-    trav_nodes=atomic_read(&chain->traversed_rules);
-    pkts=atomic_read(&chain->proc_pkts);
+    trav_nodes=atomic64_read(&chain->traversed_rules);
+    pkts=atomic64_read(&chain->proc_pkts);
+    expr=atomic64_read(&chain->expr);
     swaps=atomic_read(&chain->swaps);
-    printk("travnodes = %u pkts = %u", trav_nodes, pkts);
+    printk("travnodes = %llu pkts = %llu expr=%llu", trav_nodes, pkts, expr);
     if(pkts==0){
         avg_trav_nodes = 0;
         avg_swaps=0;
+        avg_expr=0;
     }else{
 #ifdef CONFIG_SAL_GENERAL
     avg_trav_nodes=(trav_nodes)/pkts;
@@ -7435,11 +7440,16 @@ static int nf_tables_fill_travnode_info(struct sk_buff *skb, struct nft_chain *c
     avg_trav_nodes=(trav_nodes)/pkts;
 #endif
     avg_swaps=swaps/pkts;
+    avg_expr=(expr)/pkts;
+    printk("Sending %u %u\n", avg_trav_nodes, avg_expr);
     }
 	if(nla_put_be32(skb, NLA_U32, htonl(avg_trav_nodes))){
 		goto nla_put_failure;
 	}
 	if(nla_put_be32(skb, NLA_U32, htonl(avg_swaps))){
+		goto nla_put_failure;
+	}
+	if(nla_put_be32(skb, NLA_U32, htonl(avg_expr))){
 		goto nla_put_failure;
 	}
 	nlmsg_end(skb, nlh);
@@ -7510,9 +7520,9 @@ static int nf_tables_reset_chain_rules(struct nft_chain *chain, struct net *net)
 
 #endif // CONFIG_SAL_GENERAL
 //if SAL_GENERAL is not enabled => the default list is used just set the traversed rules counter to 0
-    atomic_set(&chain->traversed_rules, 0);
+    atomic64_set(&chain->traversed_rules, 0);
     atomic_set(&chain->swaps, 0);
-    atomic_set(&chain->proc_pkts, 0);
+    atomic64_set(&chain->proc_pkts, 0);
     return 0;
 }
 

@@ -10,6 +10,7 @@
 #include <linux/netfilter/nfnetlink.h>
 #include <linux/netfilter/nf_tables.h>
 #include <linux/netfilter.h>
+#include <linux/types.h>
 
 #define NFT_MSG_GETTRAVNODES 25
 #define NFT_MSG_RESETCHAIN 26
@@ -27,6 +28,8 @@ struct get_ret {
     unsigned int traversed_nodes;
     struct nlattr attr2;
     unsigned int swaps;
+    struct nlattr attr3;
+    unsigned int exprs;
 };
 
 
@@ -82,6 +85,9 @@ int main(int argc, char **argv){
                 }
                 if(trav_swaps->attr2.nla_type == MNL_TYPE_U32){
                     printf("%u\n", ntohl(trav_swaps->swaps));
+                }
+                if(trav_swaps->attr3.nla_type == MNL_TYPE_U32){
+                    printf("%u\n", ntohl(trav_swaps->exprs));
                 }
                 //     printf("attr_len: %hu attr_type: %hu traversed nodes: %d\n", ret->attr.nla_len, ret->attr.nla_type, ntohl(*(int *)ret->data));
                 break;

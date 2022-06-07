@@ -210,6 +210,7 @@ nft_do_chain(struct nft_pktinfo *pkt, void *priv)
 	struct nft_jumpstack jumpstack[NFT_JUMP_STACK_SIZE];
 	bool genbit = READ_ONCE(net->nft.gencursor);
     u32 idx = 0;
+    u64 num_expr =0;
 	struct nft_traceinfo info;
 #ifdef CONFIG_SAL_GENERAL
     int cpu = smp_processor_id();
@@ -218,9 +219,9 @@ nft_do_chain(struct nft_pktinfo *pkt, void *priv)
 #endif
 #ifdef CONFIG_SAL_DEBUG
     unsigned int swaps;
-    unsigned int trav_nodes = 0;
+    u64 trav_nodes = 0;
     info.enabled = false;
-    atomic_inc(&chain->proc_pkts);
+    atomic64_inc(&chain->proc_pkts);
 #endif
 	info.trace = false;
 	if (static_branch_unlikely(&nft_trace_enabled))
@@ -253,12 +254,15 @@ next_rule:
 	for (; *rules ; rules++, ++idx) {
 	//MyCode
 #ifdef CONFIG_SAL_DEBUG
-		atomic_inc(&chain->traversed_rules);
+		atomic64_inc(&chain->traversed_rules);
         trav_nodes++;
 #endif
 		rule = *rules;
         //printk("On: %u, eval: %u\n",cpu, rule->priority );
 		nft_rule_for_each_expr(expr, last, rule) {
+#ifdef CONFIG_SAL_DEBUG
+            num_expr++;
+#endif
 			if (expr->ops == &nft_cmp_fast_ops)
 				nft_cmp_fast_eval(expr, &regs);
 			else if (expr->ops == &nft_bitwise_fast_ops)
@@ -282,8 +286,12 @@ next_rule:
 		}
 		break;
 	}
+#ifdef CONFIG_SAL_DEBUG
+    atomic64_add(num_expr, &chain->expr);
 
-	switch (regs.verdict.code & NF_VERDICT_MASK) {
+#endif
+
+    switch (regs.verdict.code & NF_VERDICT_MASK) {
 	case NF_ACCEPT:
 	case NF_DROP:
 	case NF_QUEUE:
@@ -294,7 +302,7 @@ next_rule:
         //printk("Accessed rule %u on idx %u\n", rule->priority, idx);
         swaps = nft_access_rule(rules_backup, rule, idx);
         atomic_add(swaps, &chain->swaps);
-        atomic_add(idx, &chain->traversed_rules);
+        atomic64_add(idx, &chain->traversed_rules);
         info.enabled = true;
         info.trav_nodes = trav_nodes;
         info.swaps = swaps;

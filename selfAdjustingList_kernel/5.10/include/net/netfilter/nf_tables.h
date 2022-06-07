@@ -972,9 +972,10 @@ struct nft_chain {
 	u8				*udata;
 //MyCode
 #ifdef CONFIG_SAL_DEBUG
-	atomic_t 	traversed_rules;
-    atomic_t    proc_pkts;
+	atomic64_t 	traversed_rules;
+    atomic64_t    proc_pkts;
     atomic_t    swaps;
+    atomic64_t    expr;
 #endif
 #ifdef CONFIG_SAL_LOCKING_ENABLE
 	spinlock_t rules_lock;
