@@ -218,6 +218,7 @@ nft_do_chain(struct nft_pktinfo *pkt, void *priv)
     struct nft_rule **rules_backup;
 #endif
 #ifdef CONFIG_SAL_DEBUG
+
     unsigned int swaps;
     u64 trav_nodes = 0;
     info.enabled = false;
@@ -296,7 +297,6 @@ next_rule:
 	case NF_DROP:
 	case NF_QUEUE:
 	case NF_STOLEN:
-	//printk(KERN_INFO "Rule taken handle %lu\n", rule->handle);
 #ifdef CONFIG_SAL_GENERAL
 #ifdef CONFIG_SAL_DEBUG
         //printk("Accessed rule %u on idx %u\n", rule->priority, idx);
@@ -307,7 +307,9 @@ next_rule:
         info.trav_nodes = trav_nodes;
         info.swaps = swaps;
         info.rule_handle = rule->handle;
+
         info.cpu = cpu;
+
 #else
         nft_access_rule(rules_backup, rule, idx);
 #endif
@@ -361,6 +363,7 @@ next_rule:
     info.swaps = 0;
     info.trav_nodes = trav_nodes;
     info.rule_handle = 0;
+    info.cpu= smp_processor_id();
 #endif
 
 	nft_trace_packet(&info, basechain, NULL, NFT_TRACETYPE_POLICY);

@@ -1,3 +1,4 @@
+#! /usr/bin/env python3
 from bcc import BPF
 from bcc.utils import printb
 import sys
@@ -62,12 +63,15 @@ BPF_PERF_OUTPUT(trav_rules);
 
 
 get_statistics = """
+
     #include <net/netfilter/nf_tables.h>
+
 
     struct time_t {
         u64 time_ns;
         u64 pid;
     };
+
 
     struct rule_statistic {
         unsigned int handle;
@@ -81,10 +85,12 @@ get_statistics = """
     BPF_PERF_OUTPUT(statistics);
     BPF_HASH(cache,u64,struct time_t);
     BPF_HASH(reorder,u64,struct time_t);
+
 //to take the pid as a key should be okay, because measuring the evaluation time of a packet can be done with the one core configuration
 
     void start_time_measure(struct pt_regs *ctx){
         struct time_t tns;
+
         u64 cpu = bpf_get_smp_processor_id();
         tns.time_ns = bpf_ktime_get_ns();
         tns.pid=bpf_get_current_pid_tgid();
@@ -147,6 +153,7 @@ get_statistics = """
         }
     }
 
+
 """
 
 
@@ -165,6 +172,7 @@ def print_trav_rules(cpu, data, size):
     
 
 def log(cpu, data, size):
+
     rule_stats = b["statistics"].event(data)
     out = f"{rule_stats.handle},{rule_stats.swaps},{rule_stats.trav_nodes},{rule_stats.cpu},{rule_stats.time_ns}\n"
     f.write(out)
@@ -210,6 +218,7 @@ def main():
         b.perf_buffer_poll()
         #b.trace_print()
         
+
 if __name__ == '__main__':
     try:
         main()
