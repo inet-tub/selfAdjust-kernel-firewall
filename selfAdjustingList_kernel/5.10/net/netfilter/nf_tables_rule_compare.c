@@ -297,7 +297,8 @@ void nft_construct_rule_data(struct nft_ra_info *data, struct nft_rule *rule){
                 meta = nft_expr_priv(expr);
                 state = META_LOADED;
             }else{
-                state = UNEXPECTED;
+                //counter expression
+                state = NEXT_LOAD;
             }
             break;
         case PAYLOAD_LOADED:
@@ -336,11 +337,12 @@ void nft_construct_rule_data(struct nft_ra_info *data, struct nft_rule *rule){
         case END:
             break;
         default:
-            BUG();
+            //BUG();
+            state=NEXT_LOAD;
             break;
         }
     }
-    print_rule_info(data);
+    //print_rule_info(data);
 
 }
 #endif

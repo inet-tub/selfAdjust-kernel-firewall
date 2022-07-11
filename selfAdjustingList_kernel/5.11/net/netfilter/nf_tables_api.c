@@ -8015,7 +8015,7 @@ static int nf_tables_commit_chain_prepare(struct net *net, struct nft_chain *cha
 {
 	struct nft_rule *rule;
 	unsigned int alloc = 0;
-	int i;
+	int i, j;
 	//MyCode
 	spin_lock(&chain->rules_lock);
 	/* already handled or inactive chain? */
@@ -8047,7 +8047,23 @@ static int nf_tables_commit_chain_prepare(struct net *net, struct nft_chain *cha
 	}
 
 	chain->rules_next[i] = NULL;
-	spin_unlock(&chain->rules_lock);
+#ifdef CONFIG_SAL_GENERAL
+    i=0;
+    for_each_possible_cpu(i) {
+        struct softnet_data *sd = &per_cpu(softnet_data, i);
+        sd->rules[chain->hook_num] = kzalloc((alloc+1)*sizeof(struct nft_rule *), GFP_KERNEL);
+        if(!sd->rules[chain->hook_num]){
+            return -ENOMEM;
+        }
+        j=0;
+        list_for_each_entry_continue(rule, &chain->rules, list) {
+            sd->rules[chain->hook_num][j++] = rule;
+            printk("On: %d rule: %u\n",i, sd->rules[chain->hook_num][j-1]->priority);
+        }
+        sd->rules[chain->hook_num][j] = NULL;
+    }
+
+    spin_unlock(&chain->rules_lock);
 	return 0;
 }
 
@@ -8143,7 +8159,8 @@ static void nf_tables_commit_chain(struct net *net, struct nft_chain *chain)
 	else
 		nf_tables_commit_chain_free_rules_old(g0);
 
-	spin_unlock(&chain->rules_lock);
+
+        spin_unlock(&chain->rules_lock);
 }
 
 static void nft_obj_del(struct nft_object *obj)

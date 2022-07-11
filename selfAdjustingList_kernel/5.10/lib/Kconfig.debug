@@ -532,10 +532,6 @@ config SAL_GENERAL
 config SAL_MEMLESS_HELPER_STRUCT
 	bool "Storing nft_ra_info helper struct in nft_chain "
 	depends on SAL_GENERAL
-	
-config SAL_LOCKING_ENABLE
-	bool "Enable Locking for rules update"
-	depends on SAL_GENERAL
 
 config SAL_DEBUG
 	bool "Adding statistics such as traversed nodes counter and debugging back end"

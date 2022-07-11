@@ -10,6 +10,7 @@
 #include <linux/netfilter/nfnetlink.h>
 #include <linux/netfilter/nf_tables.h>
 #include <linux/netfilter.h>
+#include <linux/types.h>
 
 #define NFT_MSG_GETTRAVNODES 25
 #define NFT_MSG_RESETCHAIN 26
@@ -19,6 +20,16 @@ struct req_ret {
     struct nfgenmsg genmsg;
     struct nlattr attr;
     char data[0];
+};
+struct get_ret {
+    struct nlmsghdr nlh;
+    struct nfgenmsg genmsg;
+    struct nlattr attr1;
+    unsigned int traversed_nodes;
+    struct nlattr attr2;
+    unsigned int swaps;
+    struct nlattr attr3;
+    unsigned int exprs;
 };
 
 
@@ -59,17 +70,24 @@ int main(int argc, char **argv){
     mnl_socket_sendto(nl, nlh, nlh->nlmsg_len);
     ret  = mnl_socket_recvfrom(nl, buf, sizeof(buf));
     if(ret > 0){
-        struct req_ret *ret = (struct req_ret *)buf;
         //printf("len: %u type: %hu, flags: %hu, nlmsg_seq: %u, portid: %u\n", ret->nlh.nlmsg_len, ret->nlh.nlmsg_type, ret->nlh.nlmsg_flags, ret->nlh.nlmsg_seq, ret->nlh.nlmsg_pid);
         //printf("family %u, version %d, res_id %d\n", ret->genmsg.nfgen_family, ret->genmsg.version, ret->genmsg.res_id);
+        struct req_ret *ret = (struct req_ret *)buf;
+        struct get_ret *trav_swaps = (struct get_ret *)buf;
         switch(ret->nlh.nlmsg_type & 0x00ff) {
             case NFT_MSG_RESETCHAIN:
                 //printf("attr_len %hu attr_type %hu %s\n", ret->attr.nla_len, ret->attr.nla_type, ret->data);
                 printf("%s\n", ret->data);
                 break;
             case NFT_MSG_GETTRAVNODES:
-                if(ret->attr.nla_type == MNL_TYPE_U32){
-                    printf("Traversed Nodes: %u\n", ntohl(*(unsigned int *)ret->data));
+                if(trav_swaps->attr1.nla_type == MNL_TYPE_U32){
+                    printf("%u\n", ntohl(trav_swaps->traversed_nodes));
+                }
+                if(trav_swaps->attr2.nla_type == MNL_TYPE_U32){
+                    printf("%u\n", ntohl(trav_swaps->swaps));
+                }
+                if(trav_swaps->attr3.nla_type == MNL_TYPE_U32){
+                    printf("%u\n", ntohl(trav_swaps->exprs));
                 }
                 //     printf("attr_len: %hu attr_type: %hu traversed nodes: %d\n", ret->attr.nla_len, ret->attr.nla_type, ntohl(*(int *)ret->data));
                 break;
