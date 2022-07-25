@@ -30,7 +30,6 @@ BPF_PERF_OUTPUT(trav_rules);
         trav_rules.perf_submit(ctx, &data, sizeof(data));
         
          
-        //bpf_trace_printk("Hello World %u \\n", chain->traversed_rules);
         if(genbit){
             //bpf_trace_printk("genbit on\\n");
             rules = chain->rules_gen_1;
@@ -183,14 +182,23 @@ def log2(cpu, data, size):
     out = f"{rule_stats.handle},{rule_stats.swaps},{rule_stats.trav_nodes},{rule_stats.cpu},{rule_stats.time_ns},{rule_stats.time_ns_reorder}\n"
     f.write(out)
     f.flush()
-    
+
+
+def print_usage():
+    print("Usage: bpf_observer PROG\n"
+          "PROG can be 1, 2 or 3\n"
+          "1: hooks into nft_do_chain\n"
+          "2: creates a csv file <name of .csv file> and records the rule-ID, swaps, traversed-nodes, cpu, classification time\n"
+          "3: Like 2 but also records the reordering time")
+
 
 def main():
     global b
     global f
+    # TODO change this to argparse
     args = sys.argv
     if len(args) != 3:
-        print("Usage: bpf_observer PROG\nPROG can be 1 or 2\n1: hooks into nft_do_chain\n2: creates a csv file <name of .csv file>")
+        print_usage()
         return
     if args[1] == "1":
         b = BPF(text=prog)
@@ -212,7 +220,7 @@ def main():
         b.attach_kretprobe(event="nft_access_rule", fn_name="stop_time_measure_reorder")
         b["statistics"].open_perf_buffer(log2)
     else:
-        print("Usage: bpf_observer PROG\nPROG can be 1 or 2\n1: hooks into nft_do_chain\n2: creates a csv file")
+        print_usage()
         sys.exit(-1)
     while 1:
         b.perf_buffer_poll()
